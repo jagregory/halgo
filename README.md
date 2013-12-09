@@ -2,15 +2,19 @@
 
 [HAL](http://stateless.co/hal_specification.html) implementation in Go.
 
+> HAL is a simple format that gives a consistent and easy way to hyperlink between resources in your API.
+
+This library helps with serialising and deserialising structures containing embedded links to other resources.
+
 ## Install
 
     go get github.com/jagregory/halgo
 
 ## Usage
 
-    import github.com/jagregory/halgo
+Serialising a resource with HAL links:
 
-Resource:
+    import github.com/jagregory/halgo
 
     type MyResource struct {
       halgo.Links
@@ -18,23 +22,68 @@ Resource:
     }
 
     res := MyResource{
-      Links: halgo.NewLinks(
-        halgo.Self("abc"),
-      ),
-      Name:  "James",
+      Links: Links{}.
+        Self("/orders").
+        Next("/orders?page=2").
+        Link("ea:find", "/orders{?id}").
+        Add("ea:admin", Link{Href: "/admins/2", Title: "Fred"}, Link{Href: "/admins/5", Title: "Kate"}),
+      Name: "James",
     }
 
-JSON:
+    bytes, _ := json.Marshal(res)
 
-    {
+    fmt.Println(bytes)
+
+    // {
+    //   "_links": {
+    //     "self": { "href": "/orders" },
+    //     "next": { "href": "/orders?page=2" },
+    //     "ea:find": { "href": "/orders{?id}" },
+    //     "ea:admin": [{
+    //         "href": "/admins/2",
+    //         "title": "Fred"
+    //     }, {
+    //         "href": "/admins/5",
+    //         "title": "Kate"
+    //     }]
+    //   },
+    //   "Name": "James"
+    // }
+
+Deserialising and querying a resource: 
+
+    import github.com/jagregory/halgo
+
+    type MyResource struct {
+      halgo.Links
+      Name string
+    }
+
+    data := []byte(`{
       "_links": {
-        "self": { "href": "/products/123" }
+        "self": { "href": "/orders" },
+        "next": { "href": "/orders?page=2" },
+        "ea:find": { "href": "/orders{?id}" },
+        "ea:admin": [{
+            "href": "/admins/2",
+            "title": "Fred"
+        }, {
+            "href": "/admins/5",
+            "title": "Kate"
+        }]
       },
-      "Name": "Soap"
-    }
+      "Name": "James"
+    }`)
+
+    res := MyResource{}
+    json.Unmarshal(data, &res)
+
+    res.Name // "James"
+    res.Links.Href("self") // "/orders"
+    res.Links.HrefParams("self", Params{"id": 123}) // "/orders?id=123"
 
 ## TODO
 
-* Templated flag in hyperlink
+* Set templated flag in hyperlink
 * Curies
-* Embedded
+* Embedded resources

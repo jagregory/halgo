@@ -2,71 +2,131 @@ package halgo
 
 import (
 	"encoding/json"
-	"fmt"
 	"github.com/jtacoma/uritemplates"
 )
 
 type Links struct {
-	Items HyperlinkSet `json:"_links,omitempty"`
+	Items map[string]LinkSet `json:"_links,omitempty"`
 	// Curies CurieSet
 }
 
-// Create a set of hyperlinks
-func NewLinks(links ...Hyperlink) Links {
-	return Links{Items: links}
+func (l Links) Self(href string) Links {
+	return l.Link("self", href)
 }
 
-// A hyperlink with a href/URL and a relationship
-type Hyperlink struct {
-	Rel  string
-	Href string
+func (l Links) Next(href string) Links {
+	return l.Link("next", href)
 }
 
-// Create a hyperlink to a URL
-func Link(rel string, href string) Hyperlink {
-	return Hyperlink{rel, href}
+func (l Links) Link(rel, href string) Links {
+	return l.Add(rel, Link{Href: href})
 }
 
-// Create a hyperlink to a URL with a format string
-func Linkf(rel string, format string, args ...interface{}) Hyperlink {
-	return Link(rel, fmt.Sprintf(format, args...))
-}
-
-// Create a rel:self hyperlink to a url
-func Self(href string) Hyperlink {
-	return Link("self", href)
-}
-
-// Create a rel:self hyperlink with a format string
-func Selff(format string, args ...interface{}) Hyperlink {
-	return Self(fmt.Sprintf(format, args...))
-}
-
-// Set of hyperlinks
-type HyperlinkSet []Hyperlink
-
-func (l HyperlinkSet) MarshalJSON() ([]byte, error) {
-	out := make(map[string]map[string]string)
-
-	for _, link := range l {
-		out[link.Rel] = map[string]string{"href": link.Href}
+func (l Links) Add(rel string, links ...Link) Links {
+	if l.Items == nil {
+		l.Items = make(map[string]LinkSet)
 	}
 
-	return json.Marshal(out)
+	set, exists := l.Items[rel]
+
+	if exists {
+		set = append(set, links...)
+	} else {
+		set = make([]Link, len(links))
+		copy(set, links)
+	}
+
+	l.Items[rel] = set
+
+	return l
 }
 
-func (l *HyperlinkSet) UnmarshalJSON(d []byte) error {
-	out := make(map[string]map[string]string)
+// A Link with a href/URL and a relationship
+type Link struct {
+	// The "href" property is REQUIRED.
+	// Its value is either a URI [RFC3986] or a URI Template [RFC6570].
+	// If the value is a URI Template then the Link Object SHOULD have a
+	// "templated" attribute whose value is true.
+	Href string `json:"href"`
 
-	if err := json.Unmarshal(d, &out); err != nil {
+	// The "templated" property is OPTIONAL.
+	// Its value is boolean and SHOULD be true when the Link Object's "href"
+	// property is a URI Template.
+	// Its value SHOULD be considered false if it is undefined or any other
+	// value than true.
+	Templated bool `json:"templated,omitempty"`
+
+	// The "type" property is OPTIONAL.
+	// Its value is a string used as a hint to indicate the media type
+	// expected when dereferencing the target resource.
+	Type string `json:"type,omitempty"`
+
+	// The "deprecation" property is OPTIONAL.
+	// Its presence indicates that the link is to be deprecated (i.e.
+	// removed) at a future date.  Its value is a URL that SHOULD provide
+	// further information about the deprecation.
+	// A client SHOULD provide some notification (for example, by logging a
+	// warning message) whenever it traverses over a link that has this
+	// property.  The notification SHOULD include the deprecation property's
+	// value so that a client manitainer can easily find information about
+	// the deprecation.
+	Deprecation string `json:"deprecation,omitempty"`
+
+	// The "name" property is OPTIONAL.
+	// Its value MAY be used as a secondary key for selecting Link Objects
+	// which share the same relation type.
+	Name string `json:"name,omitempty"`
+
+	// The "profile" property is OPTIONAL.
+	// Its value is a string which is a URI that hints about the profile (as
+	// defined by [I-D.wilde-profile-link]) of the target resource.
+	Profile string `json:"profile,omitempty"`
+
+	// The "title" property is OPTIONAL.
+	// Its value is a string and is intended for labelling the link with a
+	// human-readable identifier (as defined by [RFC5988]).
+	Title string `json:"title,omitempty"`
+
+	// The "hreflang" property is OPTIONAL.
+	// Its value is a string and is intended for indicating the language of
+	// the target resource (as defined by [RFC5988]).
+	HrefLang string `json:"hreflang,omitempty"`
+}
+
+type LinkSet []Link
+
+func (l LinkSet) MarshalJSON() ([]byte, error) {
+	if len(l) == 1 {
+		return json.Marshal(l[0])
+	}
+
+	other := make([]Link, len(l))
+	copy(other, l)
+
+	return json.Marshal(other)
+}
+
+func (l *LinkSet) UnmarshalJSON(d []byte) error {
+	single := Link{}
+	err := json.Unmarshal(d, &single)
+	if err == nil {
+		*l = []Link{single}
+		return nil
+	}
+
+	if _, ok := err.(*json.UnmarshalTypeError); !ok {
 		return err
 	}
 
-	for rel, link := range out {
-		*l = append(*l, Hyperlink{rel, link["href"]})
+	multiple := []Link{}
+	err = json.Unmarshal(d, &multiple)
+
+	if err == nil {
+		*l = multiple
+		return nil
 	}
 
-	return nil
+	return err
 }
 
 type Params map[string]interface{}
@@ -80,9 +140,9 @@ func (l Links) Href(rel string) (string, error) {
 // Find the href of a link by its relationship, expanding any URI Template
 // parameters with params. Returns "" if a link doesn't exist.
 func (l Links) HrefParams(rel string, params map[string]interface{}) (string, error) {
-	for _, link := range l.Items {
-		if link.Rel == rel {
-			println(link.Href)
+	for relf, links := range l.Items {
+		if relf == rel {
+			link := links[0] // TODO: handle multiple here
 			template, err := uritemplates.Parse(link.Href)
 			if err != nil {
 				return "", err
