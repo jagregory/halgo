@@ -1,10 +1,5 @@
 package halgo
 
-import (
-	"encoding/json"
-	"github.com/jtacoma/uritemplates"
-)
-
 type Links struct {
 	Items map[string]LinkSet `json:"_links,omitempty"`
 	// Curies CurieSet
@@ -91,66 +86,4 @@ type Link struct {
 	// Its value is a string and is intended for indicating the language of
 	// the target resource (as defined by [RFC5988]).
 	HrefLang string `json:"hreflang,omitempty"`
-}
-
-type LinkSet []Link
-
-func (l LinkSet) MarshalJSON() ([]byte, error) {
-	if len(l) == 1 {
-		return json.Marshal(l[0])
-	}
-
-	other := make([]Link, len(l))
-	copy(other, l)
-
-	return json.Marshal(other)
-}
-
-func (l *LinkSet) UnmarshalJSON(d []byte) error {
-	single := Link{}
-	err := json.Unmarshal(d, &single)
-	if err == nil {
-		*l = []Link{single}
-		return nil
-	}
-
-	if _, ok := err.(*json.UnmarshalTypeError); !ok {
-		return err
-	}
-
-	multiple := []Link{}
-	err = json.Unmarshal(d, &multiple)
-
-	if err == nil {
-		*l = multiple
-		return nil
-	}
-
-	return err
-}
-
-type Params map[string]interface{}
-
-// Find the href of a link by its relationship. Returns
-// "" if a link doesn't exist.
-func (l Links) Href(rel string) (string, error) {
-	return l.HrefParams(rel, nil)
-}
-
-// Find the href of a link by its relationship, expanding any URI Template
-// parameters with params. Returns "" if a link doesn't exist.
-func (l Links) HrefParams(rel string, params map[string]interface{}) (string, error) {
-	for relf, links := range l.Items {
-		if relf == rel {
-			link := links[0] // TODO: handle multiple here
-			template, err := uritemplates.Parse(link.Href)
-			if err != nil {
-				return "", err
-			}
-
-			return template.Expand(params)
-		}
-	}
-
-	return "", nil
 }
