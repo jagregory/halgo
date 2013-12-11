@@ -91,3 +91,17 @@ func TestUnmarshalLinksToJSON(t *testing.T) {
 		t.Errorf("Expected ea:admin to be %s, got %s", expected, href)
 	}
 }
+
+func TestLinkFormatting(t *testing.T) {
+	l := Links{}.
+		Link("no-format", "/a/url/%s").
+		Link("format", "/a/url/%d", 10)
+
+	if v, _ := l.Href("no-format"); v != "/a/url/%s" {
+		t.Errorf("Expected no-format to match '/a/url/%%s', got %s", v)
+	}
+
+	if v, _ := l.Href("format"); v != "/a/url/10" {
+		t.Errorf("Expected no-format to match '/a/url/10', got %s", v)
+	}
+}

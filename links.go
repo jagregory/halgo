@@ -1,19 +1,28 @@
 package halgo
 
+import "fmt"
+
 type Links struct {
 	Items map[string]LinkSet `json:"_links,omitempty"`
 	// Curies CurieSet
 }
 
-func (l Links) Self(href string) Links {
-	return l.Link("self", href)
+func (l Links) Self(href string, args ...interface{}) Links {
+	return l.Link("self", href, args...)
 }
 
-func (l Links) Next(href string) Links {
-	return l.Link("next", href)
+func (l Links) Next(href string, args ...interface{}) Links {
+	return l.Link("next", href, args...)
 }
 
-func (l Links) Link(rel, href string) Links {
+func (l Links) Prev(href string, args ...interface{}) Links {
+	return l.Link("prev", href, args...)
+}
+
+func (l Links) Link(rel, href string, args ...interface{}) Links {
+	if len(args) != 0 {
+		href = fmt.Sprintf(href, args...)
+	}
 	return l.Add(rel, Link{Href: href})
 }
 
