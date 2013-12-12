@@ -11,6 +11,8 @@ type MyResource struct {
 	Name string
 }
 
+var exampleJson string = `{"_links":{"ea:admin":[{"href":"/admins/2","title":"Fred"},{"href":"/admins/5","title":"Kate"}],"ea:find":{"href":"/orders{?id}","templated":true},"next":{"href":"/orders?page=2"},"self":{"href":"/orders"}},"Name":"James"}`
+
 func TestMarshalLinksToJSON(t *testing.T) {
 	res := MyResource{
 		Name: "James",
@@ -26,7 +28,7 @@ func TestMarshalLinksToJSON(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if string(b) != `{"_links":{"ea:admin":[{"href":"/admins/2","title":"Fred"},{"href":"/admins/5","title":"Kate"}],"ea:find":{"href":"/orders{?id}"},"next":{"href":"/orders?page=2"},"self":{"href":"/orders"}},"Name":"James"}` {
+	if string(b) != exampleJson {
 		t.Errorf("Unexpected JSON %s", b)
 	}
 }
@@ -49,7 +51,7 @@ func TestEmptyMarshalLinksToJSON(t *testing.T) {
 
 func TestUnmarshalLinksToJSON(t *testing.T) {
 	res := MyResource{}
-	err := json.Unmarshal([]byte(`{"_links":{"ea:admin":[{"href":"/admins/2","title":"Fred"},{"href":"/admins/5","title":"Kate"}],"ea:find":{"href":"/orders{?id}"},"next":{"href":"/orders?page=2"},"self":{"href":"/orders"}},"Name":"James"}`), &res)
+	err := json.Unmarshal([]byte(exampleJson), &res)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -103,5 +105,19 @@ func TestLinkFormatting(t *testing.T) {
 
 	if v, _ := l.Href("format"); v != "/a/url/10" {
 		t.Errorf("Expected no-format to match '/a/url/10', got %s", v)
+	}
+}
+
+func TestAutoSettingOfTemplated(t *testing.T) {
+	l := Links{}.
+		Link("not-templated", "/a/b/c").
+		Link("templated", "/a/b/{c}")
+
+	if l.Items["not-templated"][0].Templated != false {
+		t.Error("not-templated should have Templated=false")
+	}
+
+	if l.Items["templated"][0].Templated != true {
+		t.Error("not-templated should have Templated=true")
 	}
 }

@@ -1,6 +1,9 @@
 package halgo
 
-import "fmt"
+import (
+	"fmt"
+	"regexp"
+)
 
 type Links struct {
 	Items map[string]LinkSet `json:"_links,omitempty"`
@@ -23,7 +26,10 @@ func (l Links) Link(rel, href string, args ...interface{}) Links {
 	if len(args) != 0 {
 		href = fmt.Sprintf(href, args...)
 	}
-	return l.Add(rel, Link{Href: href})
+
+	templated, _ := regexp.Match("{.*?}", []byte(href))
+
+	return l.Add(rel, Link{Href: href, Templated: templated})
 }
 
 func (l Links) Add(rel string, links ...Link) Links {

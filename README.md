@@ -38,7 +38,7 @@ Serialising a resource with HAL links:
     //   "_links": {
     //     "self": { "href": "/orders" },
     //     "next": { "href": "/orders?page=2" },
-    //     "ea:find": { "href": "/orders{?id}" },
+    //     "ea:find": { "href": "/orders{?id}", "templated": true },
     //     "ea:admin": [{
     //         "href": "/admins/2",
     //         "title": "Fred"
@@ -63,7 +63,7 @@ Deserialising and querying a resource:
       "_links": {
         "self": { "href": "/orders" },
         "next": { "href": "/orders?page=2" },
-        "ea:find": { "href": "/orders{?id}" },
+        "ea:find": { "href": "/orders{?id}", "templated": true },
         "ea:admin": [{
             "href": "/admins/2",
             "title": "Fred"
@@ -84,6 +84,5 @@ Deserialising and querying a resource:
 
 ## TODO
 
-* Set templated flag in hyperlink
 * Curies
 * Embedded resources
