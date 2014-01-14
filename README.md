@@ -14,73 +14,77 @@ This library helps with serialising and deserialising structures containing embe
 
 Serialising a resource with HAL links:
 
-    import github.com/jagregory/halgo
+```go
+import github.com/jagregory/halgo
 
-    type MyResource struct {
-      halgo.Links
-      Name string
-    }
+type MyResource struct {
+  halgo.Links
+  Name string
+}
 
-    res := MyResource{
-      Links: Links{}.
-        Self("/orders").
-        Next("/orders?page=2").
-        Link("ea:find", "/orders{?id}").
-        Add("ea:admin", Link{Href: "/admins/2", Title: "Fred"}, Link{Href: "/admins/5", Title: "Kate"}),
-      Name: "James",
-    }
+res := MyResource{
+  Links: Links{}.
+    Self("/orders").
+    Next("/orders?page=2").
+    Link("ea:find", "/orders{?id}").
+    Add("ea:admin", Link{Href: "/admins/2", Title: "Fred"}, Link{Href: "/admins/5", Title: "Kate"}),
+  Name: "James",
+}
 
-    bytes, _ := json.Marshal(res)
+bytes, _ := json.Marshal(res)
 
-    fmt.Println(bytes)
+fmt.Println(bytes)
 
-    // {
-    //   "_links": {
-    //     "self": { "href": "/orders" },
-    //     "next": { "href": "/orders?page=2" },
-    //     "ea:find": { "href": "/orders{?id}", "templated": true },
-    //     "ea:admin": [{
-    //         "href": "/admins/2",
-    //         "title": "Fred"
-    //     }, {
-    //         "href": "/admins/5",
-    //         "title": "Kate"
-    //     }]
-    //   },
-    //   "Name": "James"
-    // }
+// {
+//   "_links": {
+//     "self": { "href": "/orders" },
+//     "next": { "href": "/orders?page=2" },
+//     "ea:find": { "href": "/orders{?id}", "templated": true },
+//     "ea:admin": [{
+//         "href": "/admins/2",
+//         "title": "Fred"
+//     }, {
+//         "href": "/admins/5",
+//         "title": "Kate"
+//     }]
+//   },
+//   "Name": "James"
+// }
+```
 
 Deserialising and querying a resource: 
 
-    import github.com/jagregory/halgo
+```go
+import github.com/jagregory/halgo
 
-    type MyResource struct {
-      halgo.Links
-      Name string
-    }
+type MyResource struct {
+  halgo.Links
+  Name string
+}
 
-    data := []byte(`{
-      "_links": {
-        "self": { "href": "/orders" },
-        "next": { "href": "/orders?page=2" },
-        "ea:find": { "href": "/orders{?id}", "templated": true },
-        "ea:admin": [{
-            "href": "/admins/2",
-            "title": "Fred"
-        }, {
-            "href": "/admins/5",
-            "title": "Kate"
-        }]
-      },
-      "Name": "James"
-    }`)
+data := []byte(`{
+  "_links": {
+    "self": { "href": "/orders" },
+    "next": { "href": "/orders?page=2" },
+    "ea:find": { "href": "/orders{?id}", "templated": true },
+    "ea:admin": [{
+        "href": "/admins/2",
+        "title": "Fred"
+    }, {
+        "href": "/admins/5",
+        "title": "Kate"
+    }]
+  },
+  "Name": "James"
+}`)
 
-    res := MyResource{}
-    json.Unmarshal(data, &res)
+res := MyResource{}
+json.Unmarshal(data, &res)
 
-    res.Name // "James"
-    res.Links.Href("self") // "/orders"
-    res.Links.HrefParams("self", Params{"id": 123}) // "/orders?id=123"
+res.Name // "James"
+res.Links.Href("self") // "/orders"
+res.Links.HrefParams("self", Params{"id": 123}) // "/orders?id=123"
+```
 
 ## TODO
 
