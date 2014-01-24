@@ -1,4 +1,4 @@
-package halgo
+package navigator
 
 import "github.com/jtacoma/uritemplates"
 
@@ -13,7 +13,7 @@ func (l Links) Href(rel string) (string, error) {
 // Find the href of a link by its relationship, expanding any URI Template
 // parameters with params. Returns "" if a link doesn't exist.
 func (l Links) HrefParams(rel string, params map[string]interface{}) (string, error) {
-	for relf, links := range l.Items {
+	for relf, links := range l {
 		if relf == rel {
 			link := links[0] // TODO: handle multiple here
 			template, err := uritemplates.Parse(link.Href)
