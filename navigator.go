@@ -10,21 +10,21 @@ import (
 
 func Navigator(uri string) navigator {
 	return navigator{
-		rootUri:         uri,
-		linksToNavigate: []link{},
-		HttpClient:      http.DefaultClient,
+		rootUri:    uri,
+		path:       []relation{},
+		HttpClient: http.DefaultClient,
 	}
 }
 
-type link struct {
+type relation struct {
 	rel    string
 	params Params
 }
 
 type navigator struct {
-	HttpClient      HttpClient
-	linksToNavigate []link
-	rootUri         string
+	HttpClient HttpClient
+	path       []relation
+	rootUri    string
 }
 
 func (n navigator) Link(rel string) navigator {
@@ -32,21 +32,21 @@ func (n navigator) Link(rel string) navigator {
 }
 
 func (n navigator) LinkExpand(rel string, params Params) navigator {
-	links := make([]link, 0, len(n.linksToNavigate)+1)
-	copy(n.linksToNavigate, links)
-	links = append(links, link{rel: rel})
+	relations := make([]relation, 0, len(n.path)+1)
+	copy(n.path, relations)
+	relations = append(relations, relation{rel: rel})
 
 	return navigator{
-		HttpClient:      n.HttpClient,
-		linksToNavigate: links,
-		rootUri:         n.rootUri,
+		HttpClient: n.HttpClient,
+		path:       relations,
+		rootUri:    n.rootUri,
 	}
 }
 
 func (n navigator) url() (string, error) {
 	url := n.rootUri
 
-	for _, link := range n.linksToNavigate {
+	for _, link := range n.path {
 		links, err := n.getLinks(url)
 		if err != nil {
 			return "", err
