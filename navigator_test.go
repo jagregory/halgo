@@ -34,8 +34,7 @@ func TestNavigatingToUnknownLink(t *testing.T) {
 	ts, _ := createTestHttpServer()
 	defer ts.Close()
 
-	nav := Navigator(ts.URL)
-	_, err := nav.Link("missing").Get()
+	_, err := Navigator(ts.URL).Follow("missing").Get()
 	if err == nil {
 		t.Fatal("Expected error to be raised for missing link")
 	}
@@ -76,7 +75,7 @@ func TestFollowingALink(t *testing.T) {
 	ts, hits := createTestHttpServer()
 	defer ts.Close()
 
-	nav := Navigator(ts.URL).Link("next")
+	nav := Navigator(ts.URL).Follow("next")
 	res, err := nav.Get()
 	if err != nil {
 		t.Fatal(err)

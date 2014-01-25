@@ -27,11 +27,11 @@ type navigator struct {
 	rootUri    string
 }
 
-func (n navigator) Link(rel string) navigator {
-	return n.LinkExpand(rel, nil)
+func (n navigator) Follow(rel string) navigator {
+	return n.Followf(rel, nil)
 }
 
-func (n navigator) LinkExpand(rel string, params Params) navigator {
+func (n navigator) Followf(rel string, params Params) navigator {
 	relations := make([]relation, 0, len(n.path)+1)
 	copy(n.path, relations)
 	relations = append(relations, relation{rel: rel})
