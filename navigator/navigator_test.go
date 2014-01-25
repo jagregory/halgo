@@ -63,13 +63,8 @@ func TestGettingTheRoot(t *testing.T) {
 		t.Errorf("Expected OK, got %d", res.StatusCode)
 	}
 
-	url, err := nav.Url()
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	if url != ts.URL {
-		t.Errorf("Expected url to be %s, got %s", ts.URL, url)
+	if res.Request.URL.String() != ts.URL {
+		t.Errorf("Expected url to be %s, got %s", ts.URL, res.Request.URL)
 	}
 
 	if hits["/"] != 1 {
@@ -91,13 +86,8 @@ func TestFollowingALink(t *testing.T) {
 		t.Errorf("Expected OK, got %d", res.StatusCode)
 	}
 
-	url, err := nav.Url()
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	if url != ts.URL+"/2nd" {
-		t.Errorf("Expected url to be %s, got %s", ts.URL+"/2nd", url)
+	if res.Request.URL.String() != ts.URL+"/2nd" {
+		t.Errorf("Expected url to be %s, got %s", ts.URL+"/2nd", res.Request.URL)
 	}
 
 	if hits["/"] != 1 {

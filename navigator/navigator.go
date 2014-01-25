@@ -43,7 +43,7 @@ func (n Navigator) LinkExpand(rel string, params Params) Navigator {
 	}
 }
 
-func (n Navigator) Url() (string, error) {
+func (n *Navigator) url() (string, error) {
 	url := n.rootUri
 
 	for _, link := range n.linksToNavigate {
@@ -66,7 +66,7 @@ func (n Navigator) Url() (string, error) {
 }
 
 func (n Navigator) Get() (*http.Response, error) {
-	url, err := n.Url()
+	url, err := n.url()
 	if err != nil {
 		return nil, err
 	}
@@ -75,7 +75,7 @@ func (n Navigator) Get() (*http.Response, error) {
 }
 
 func (n Navigator) PostForm(data url.Values) (*http.Response, error) {
-	url, err := n.Url()
+	url, err := n.url()
 	if err != nil {
 		return nil, err
 	}
@@ -84,7 +84,7 @@ func (n Navigator) PostForm(data url.Values) (*http.Response, error) {
 }
 
 func (n Navigator) Patch(bodyType string, body io.Reader) (*http.Response, error) {
-	url, err := n.Url()
+	url, err := n.url()
 	if err != nil {
 		return nil, err
 	}
@@ -100,7 +100,7 @@ func (n Navigator) Patch(bodyType string, body io.Reader) (*http.Response, error
 }
 
 func (n Navigator) Post(bodyType string, body io.Reader) (*http.Response, error) {
-	url, err := n.Url()
+	url, err := n.url()
 	if err != nil {
 		return nil, err
 	}
