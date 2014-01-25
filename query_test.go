@@ -1,4 +1,4 @@
-package navigator
+package halgo
 
 import "testing"
 
@@ -13,7 +13,7 @@ var hrefTests = []struct {
 
 func TestHref(t *testing.T) {
 	for _, test := range hrefTests {
-		links := Links{test.name: LinkSet{Link{Href: test.url}}}
+		links := Links{Items: map[string]LinkSet{test.name: LinkSet{Link{Href: test.url}}}}
 		href, err := links.Href(test.name)
 		if err != nil {
 			t.Error(err)
@@ -39,7 +39,7 @@ var hrefParamsTests = []struct {
 
 func TestHrefParams(t *testing.T) {
 	for _, test := range hrefParamsTests {
-		links := Links{test.name: LinkSet{Link{Href: test.url}}}
+		links := Links{Items: map[string]LinkSet{test.name: LinkSet{Link{Href: test.url}}}}
 		href, err := links.HrefParams(test.name, test.params)
 		if err != nil {
 			t.Error(err)

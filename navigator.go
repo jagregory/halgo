@@ -1,4 +1,4 @@
-package navigator
+package halgo
 
 import (
 	"encoding/json"
@@ -8,8 +8,8 @@ import (
 	"net/url"
 )
 
-func New(uri string) Navigator {
-	return Navigator{
+func Navigator(uri string) navigator {
+	return navigator{
 		rootUri:         uri,
 		linksToNavigate: []link{},
 		HttpClient:      http.DefaultClient,
@@ -21,29 +21,29 @@ type link struct {
 	params Params
 }
 
-type Navigator struct {
+type navigator struct {
 	HttpClient      HttpClient
 	linksToNavigate []link
 	rootUri         string
 }
 
-func (n Navigator) Link(rel string) Navigator {
+func (n navigator) Link(rel string) navigator {
 	return n.LinkExpand(rel, nil)
 }
 
-func (n Navigator) LinkExpand(rel string, params Params) Navigator {
+func (n navigator) LinkExpand(rel string, params Params) navigator {
 	links := make([]link, 0, len(n.linksToNavigate)+1)
 	copy(n.linksToNavigate, links)
 	links = append(links, link{rel: rel})
 
-	return Navigator{
+	return navigator{
 		HttpClient:      n.HttpClient,
 		linksToNavigate: links,
 		rootUri:         n.rootUri,
 	}
 }
 
-func (n *Navigator) url() (string, error) {
+func (n navigator) url() (string, error) {
 	url := n.rootUri
 
 	for _, link := range n.linksToNavigate {
@@ -52,7 +52,7 @@ func (n *Navigator) url() (string, error) {
 			return "", err
 		}
 
-		if _, ok := links[link.rel]; !ok {
+		if _, ok := links.Items[link.rel]; !ok {
 			return "", LinkNotFoundError{link.rel}
 		}
 
@@ -65,7 +65,7 @@ func (n *Navigator) url() (string, error) {
 	return url, nil
 }
 
-func (n Navigator) Get() (*http.Response, error) {
+func (n navigator) Get() (*http.Response, error) {
 	url, err := n.url()
 	if err != nil {
 		return nil, err
@@ -74,7 +74,7 @@ func (n Navigator) Get() (*http.Response, error) {
 	return n.HttpClient.Get(url)
 }
 
-func (n Navigator) PostForm(data url.Values) (*http.Response, error) {
+func (n navigator) PostForm(data url.Values) (*http.Response, error) {
 	url, err := n.url()
 	if err != nil {
 		return nil, err
@@ -83,7 +83,7 @@ func (n Navigator) PostForm(data url.Values) (*http.Response, error) {
 	return n.HttpClient.PostForm(url, data)
 }
 
-func (n Navigator) Patch(bodyType string, body io.Reader) (*http.Response, error) {
+func (n navigator) Patch(bodyType string, body io.Reader) (*http.Response, error) {
 	url, err := n.url()
 	if err != nil {
 		return nil, err
@@ -99,7 +99,7 @@ func (n Navigator) Patch(bodyType string, body io.Reader) (*http.Response, error
 	return n.HttpClient.Do(req)
 }
 
-func (n Navigator) Post(bodyType string, body io.Reader) (*http.Response, error) {
+func (n navigator) Post(bodyType string, body io.Reader) (*http.Response, error) {
 	url, err := n.url()
 	if err != nil {
 		return nil, err
@@ -108,7 +108,7 @@ func (n Navigator) Post(bodyType string, body io.Reader) (*http.Response, error)
 	return n.HttpClient.Post(url, bodyType, body)
 }
 
-func (n Navigator) Unmarshal(v interface{}) error {
+func (n navigator) Unmarshal(v interface{}) error {
 	res, err := n.Get()
 	if err != nil {
 		return err
@@ -123,11 +123,7 @@ func (n Navigator) Unmarshal(v interface{}) error {
 	return json.Unmarshal(body, &v)
 }
 
-type halResponseBody struct {
-	Links `json:"_links"`
-}
-
-func (n Navigator) getLinks(uri string) (Links, error) {
+func (n navigator) getLinks(uri string) (Links, error) {
 	res, err := n.HttpClient.Get(uri)
 	if err != nil {
 		return Links{}, err
@@ -139,11 +135,11 @@ func (n Navigator) getLinks(uri string) (Links, error) {
 		return Links{}, err
 	}
 
-	var m halResponseBody
+	var m Links
 
 	if err := json.Unmarshal(body, &m); err != nil {
 		return Links{}, err
 	}
 
-	return m.Links, nil
+	return m, nil
 }

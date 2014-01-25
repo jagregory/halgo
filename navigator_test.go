@@ -1,4 +1,4 @@
-package navigator
+package halgo
 
 import (
 	"fmt"
@@ -34,7 +34,7 @@ func TestNavigatingToUnknownLink(t *testing.T) {
 	ts, _ := createTestHttpServer()
 	defer ts.Close()
 
-	nav := New(ts.URL)
+	nav := Navigator(ts.URL)
 	_, err := nav.Link("missing").Get()
 	if err == nil {
 		t.Fatal("Expected error to be raised for missing link")
@@ -53,7 +53,7 @@ func TestGettingTheRoot(t *testing.T) {
 	ts, hits := createTestHttpServer()
 	defer ts.Close()
 
-	nav := New(ts.URL)
+	nav := Navigator(ts.URL)
 	res, err := nav.Get()
 	if err != nil {
 		t.Fatal(err)
@@ -76,7 +76,7 @@ func TestFollowingALink(t *testing.T) {
 	ts, hits := createTestHttpServer()
 	defer ts.Close()
 
-	nav := New(ts.URL).Link("next")
+	nav := Navigator(ts.URL).Link("next")
 	res, err := nav.Get()
 	if err != nil {
 		t.Fatal(err)

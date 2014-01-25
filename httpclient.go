@@ -1,4 +1,4 @@
-package navigator
+package halgo
 
 import (
 	"fmt"
