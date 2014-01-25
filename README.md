@@ -4,7 +4,8 @@
 
 > HAL is a simple format that gives a consistent and easy way to hyperlink between resources in your API.
 
-This library helps with serialising and deserialising structures containing embedded links to other resources.
+Halgo helps with generating HAL-compliant JSON from Go structs, and
+provides a Navigator for walking a HAL-compliant API.
 
 ## Install
 
@@ -15,7 +16,7 @@ This library helps with serialising and deserialising structures containing embe
 Serialising a resource with HAL links:
 
 ```go
-import github.com/jagregory/halgo
+import "github.com/jagregory/halgo"
 
 type MyResource struct {
   halgo.Links
@@ -52,10 +53,19 @@ fmt.Println(bytes)
 // }
 ```
 
-Deserialising and querying a resource: 
+Navigating a HAL-compliant API:
 
 ```go
-import github.com/jagregory/halgo
+res, err := halgo.Navigator("http://example.com").
+  Follow("products").
+  Followf("page", halgo.P{"n": 10}).
+  Get()
+```
+
+Deserialising a resource: 
+
+```go
+import "github.com/jagregory/halgo"
 
 type MyResource struct {
   halgo.Links
