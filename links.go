@@ -1,7 +1,9 @@
 package halgo
 
 import (
+	"errors"
 	"fmt"
+	"github.com/jtacoma/uritemplates"
 	"regexp"
 )
 
@@ -49,6 +51,30 @@ func (l Links) Add(rel string, links ...Link) Links {
 	l.Items[rel] = set
 
 	return l
+}
+
+type Params map[string]interface{}
+
+// Find the href of a link by its relationship. Returns
+// LinkNotFoundError if a link doesn't exist.
+func (l Links) Href(rel string) (string, error) {
+	return l.HrefParams(rel, nil)
+}
+
+// Find the href of a link by its relationship, expanding any URI Template
+// parameters with params. Returns LinkNotFoundError if a link doesn't exist.
+func (l Links) HrefParams(rel string, params map[string]interface{}) (string, error) {
+	if rel == "" {
+		return "", errors.New("Empty string not valid relation")
+	}
+
+	links := l.Items[rel]
+	if len(links) > 0 {
+		link := links[0] // TODO: handle multiple here
+		return link.Expand(params)
+	}
+
+	return "", LinkNotFoundError{rel}
 }
 
 // A Link with a href/URL and a relationship
@@ -101,4 +127,14 @@ type Link struct {
 	// Its value is a string and is intended for indicating the language of
 	// the target resource (as defined by [RFC5988]).
 	HrefLang string `json:"hreflang,omitempty"`
+}
+
+// Expand the url template of the link
+func (l Link) Expand(params Params) (string, error) {
+	template, err := uritemplates.Parse(l.Href)
+	if err != nil {
+		return "", err
+	}
+
+	return template.Expand(map[string]interface{}(params))
 }
