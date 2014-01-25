@@ -18,7 +18,7 @@ func Navigator(uri string) navigator {
 
 type relation struct {
 	rel    string
-	params Params
+	params P
 }
 
 type navigator struct {
@@ -31,7 +31,7 @@ func (n navigator) Follow(rel string) navigator {
 	return n.Followf(rel, nil)
 }
 
-func (n navigator) Followf(rel string, params Params) navigator {
+func (n navigator) Followf(rel string, params P) navigator {
 	relations := make([]relation, 0, len(n.path)+1)
 	copy(n.path, relations)
 	relations = append(relations, relation{rel: rel, params: params})

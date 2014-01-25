@@ -28,13 +28,13 @@ var hrefParamsTests = []struct {
 	name     string
 	expected string
 	url      string
-	params   Params
+	params   P
 }{
 	{"nil parameters", "/example", "/example{?q}", nil},
-	{"empty parameters", "/example", "/example{?q}", Params{}},
-	{"mismatched parameters", "/example", "/example{?q}", Params{"c": "test"}},
-	{"single parameter", "/example?q=test", "/example{?q}", Params{"q": "test"}},
-	{"multiple parameters", "/example?q=test&page=1", "/example{?q,page}", Params{"q": "test", "page": 1}},
+	{"empty parameters", "/example", "/example{?q}", P{}},
+	{"mismatched parameters", "/example", "/example{?q}", P{"c": "test"}},
+	{"single parameter", "/example?q=test", "/example{?q}", P{"q": "test"}},
+	{"multiple parameters", "/example?q=test&page=1", "/example{?q,page}", P{"q": "test", "page": 1}},
 }
 
 func TestHrefParams(t *testing.T) {

@@ -53,7 +53,7 @@ func (l Links) Add(rel string, links ...Link) Links {
 	return l
 }
 
-type Params map[string]interface{}
+type P map[string]interface{}
 
 // Find the href of a link by its relationship. Returns
 // LinkNotFoundError if a link doesn't exist.
@@ -63,7 +63,7 @@ func (l Links) Href(rel string) (string, error) {
 
 // Find the href of a link by its relationship, expanding any URI Template
 // parameters with params. Returns LinkNotFoundError if a link doesn't exist.
-func (l Links) HrefParams(rel string, params map[string]interface{}) (string, error) {
+func (l Links) HrefParams(rel string, params P) (string, error) {
 	if rel == "" {
 		return "", errors.New("Empty string not valid relation")
 	}
@@ -130,7 +130,7 @@ type Link struct {
 }
 
 // Expand the url template of the link
-func (l Link) Expand(params Params) (string, error) {
+func (l Link) Expand(params P) (string, error) {
 	template, err := uritemplates.Parse(l.Href)
 	if err != nil {
 		return "", err

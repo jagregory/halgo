@@ -76,7 +76,7 @@ func TestUnmarshalLinksToJSON(t *testing.T) {
 		t.Errorf("Expected next to be %s, got %s", expected, href)
 	}
 
-	href, err = res.HrefParams("ea:find", Params{"id": 123})
+	href, err = res.HrefParams("ea:find", P{"id": 123})
 	if err != nil {
 		t.Fatal(err)
 	}

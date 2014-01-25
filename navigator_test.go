@@ -82,7 +82,7 @@ func TestFollowingALink(t *testing.T) {
 	ts, hits := createTestHttpServer()
 	defer ts.Close()
 
-	nav := Navigator(ts.URL).Followf("one", Params{"id": 1})
+	nav := Navigator(ts.URL).Followf("one", P{"id": 1})
 	res, err := nav.Get()
 	if err != nil {
 		t.Fatal(err)
