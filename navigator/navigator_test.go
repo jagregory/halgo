@@ -8,21 +8,33 @@ import (
 	"testing"
 )
 
-func createTestHttpServer() *httptest.Server {
+func createTestHttpServer() (*httptest.Server, map[string]int) {
 	r := mux.NewRouter()
+	hits := make(map[string]int)
+
 	r.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprintln(w, `{"_links":{}}`)
+		hits["/"] += 1
+		fmt.Fprintf(w, `{
+      "_links": {
+        "next": { "href": "http://%s/2nd" }
+      }
+    }`, r.Host)
 	})
 
-	return httptest.NewServer(r)
+	r.HandleFunc("/2nd", func(w http.ResponseWriter, r *http.Request) {
+		hits["/2nd"] += 1
+		fmt.Sprintln(w, "OK")
+		w.WriteHeader(200)
+	})
+
+	return httptest.NewServer(r), hits
 }
 
 func TestNavigatingToUnknownLink(t *testing.T) {
-	ts := createTestHttpServer()
+	ts, _ := createTestHttpServer()
 	defer ts.Close()
 
 	nav := New(ts.URL)
-	nav.HttpClient = LoggingHttpClient{nav.HttpClient}
 	_, err := nav.Link("missing").Get()
 	if err == nil {
 		t.Fatal("Expected error to be raised for missing link")
@@ -34,5 +46,65 @@ func TestNavigatingToUnknownLink(t *testing.T) {
 
 	if _, ok := err.(LinkNotFoundError); !ok {
 		t.Error("Expected error to be LinkNotFoundError")
+	}
+}
+
+func TestGettingTheRoot(t *testing.T) {
+	ts, hits := createTestHttpServer()
+	defer ts.Close()
+
+	nav := New(ts.URL)
+	res, err := nav.Get()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if res.StatusCode != http.StatusOK {
+		t.Errorf("Expected OK, got %d", res.StatusCode)
+	}
+
+	url, err := nav.Url()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if url != ts.URL {
+		t.Errorf("Expected url to be %s, got %s", ts.URL, url)
+	}
+
+	if hits["/"] != 1 {
+		t.Errorf("Expected 1 request to /, got %d", hits["/"])
+	}
+}
+
+func TestFollowingALink(t *testing.T) {
+	ts, hits := createTestHttpServer()
+	defer ts.Close()
+
+	nav := New(ts.URL).Link("next")
+	res, err := nav.Get()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if res.StatusCode != http.StatusOK {
+		t.Errorf("Expected OK, got %d", res.StatusCode)
+	}
+
+	url, err := nav.Url()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if url != ts.URL+"/2nd" {
+		t.Errorf("Expected url to be %s, got %s", ts.URL+"/2nd", url)
+	}
+
+	if hits["/"] != 1 {
+		t.Errorf("Expected 1 request to /, got %d", hits["/"])
+	}
+
+	if hits["/2nd"] != 1 {
+		t.Errorf("Expected 1 request to /2nd, got %d", hits["/2nd"])
 	}
 }
