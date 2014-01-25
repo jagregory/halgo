@@ -16,13 +16,20 @@ func createTestHttpServer() (*httptest.Server, map[string]int) {
 		hits["/"] += 1
 		fmt.Fprintf(w, `{
       "_links": {
-        "next": { "href": "http://%s/2nd" }
+        "next": { "href": "http://%s/2nd" },
+        "one": { "href": "http://%s/a/{id}", "templated": true }
       }
-    }`, r.Host)
+    }`, r.Host, r.Host)
 	})
 
 	r.HandleFunc("/2nd", func(w http.ResponseWriter, r *http.Request) {
 		hits["/2nd"] += 1
+		fmt.Sprintln(w, "OK")
+		w.WriteHeader(200)
+	})
+
+	r.HandleFunc("/a/{id}", func(w http.ResponseWriter, r *http.Request) {
+		hits["/a/"+mux.Vars(r)["id"]] += 1
 		fmt.Sprintln(w, "OK")
 		w.WriteHeader(200)
 	})
@@ -72,6 +79,33 @@ func TestGettingTheRoot(t *testing.T) {
 }
 
 func TestFollowingALink(t *testing.T) {
+	ts, hits := createTestHttpServer()
+	defer ts.Close()
+
+	nav := Navigator(ts.URL).Followf("one", Params{"id": 1})
+	res, err := nav.Get()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if res.StatusCode != http.StatusOK {
+		t.Errorf("Expected OK, got %d", res.StatusCode)
+	}
+
+	if res.Request.URL.String() != ts.URL+"/a/1" {
+		t.Errorf("Expected url to be %s, got %s", ts.URL+"/a/1", res.Request.URL)
+	}
+
+	if hits["/"] != 1 {
+		t.Errorf("Expected 1 request to /, got %d", hits["/"])
+	}
+
+	if hits["/a/1"] != 1 {
+		t.Errorf("Expected 1 request to /a/1, got %d", hits["/a/1"])
+	}
+}
+
+func TestFollowingATemplatedLink(t *testing.T) {
 	ts, hits := createTestHttpServer()
 	defer ts.Close()
 

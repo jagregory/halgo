@@ -34,7 +34,7 @@ func (n navigator) Follow(rel string) navigator {
 func (n navigator) Followf(rel string, params Params) navigator {
 	relations := make([]relation, 0, len(n.path)+1)
 	copy(n.path, relations)
-	relations = append(relations, relation{rel: rel})
+	relations = append(relations, relation{rel: rel, params: params})
 
 	return navigator{
 		HttpClient: n.HttpClient,
