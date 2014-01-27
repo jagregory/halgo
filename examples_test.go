@@ -41,6 +41,28 @@ func ExampleLinks() {
 	// }
 }
 
+func ExampleLinks_templated() {
+	type root struct{ halgo.Links }
+
+	p := root{
+		Links: halgo.Links{}.
+			Link("invoices", "http://example.com/invoices{?q,sort}"),
+	}
+
+	b, _ := json.MarshalIndent(p, "", "  ")
+
+	fmt.Println(string(b))
+	// Output:
+	// {
+	//   "_links": {
+	//     "invoices": {
+	//       "href": "http://example.com/invoices{?q,sort}",
+	//       "templated": true
+	//     }
+	//   }
+	// }
+}
+
 func ExampleLinks_multiple() {
 	type person struct {
 		halgo.Links
