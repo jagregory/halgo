@@ -158,30 +158,3 @@ func TestFollowingALink(t *testing.T) {
 		t.Errorf("Expected 1 request to /2nd, got %d", hits["/2nd"])
 	}
 }
-
-func ExampleNavigator() {
-	var me struct{ Username string }
-
-	Navigator("http://haltalk.herokuapp.com/").
-		Followf("ht:me", P{"name": "jagregory"}).
-		Unmarshal(&me)
-
-	fmt.Println(me.Username)
-	// Output: jagregory
-}
-
-func ExampleNavigator_logging() {
-	var me struct{ Username string }
-
-	nav := Navigator("http://haltalk.herokuapp.com/")
-	nav.HttpClient = LoggingHttpClient{http.DefaultClient}
-
-	nav.Followf("ht:me", P{"name": "jagregory"}).
-		Unmarshal(&me)
-
-	fmt.Printf("Username: %s", me.Username)
-	// Output:
-	// GET http://haltalk.herokuapp.com/
-	// GET http://haltalk.herokuapp.com/users/jagregory
-	// Username: jagregory
-}
