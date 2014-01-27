@@ -2,7 +2,7 @@ package halgo
 
 import (
 	"encoding/json"
-	_ "fmt"
+	"fmt"
 	"testing"
 )
 
@@ -120,4 +120,67 @@ func TestAutoSettingOfTemplated(t *testing.T) {
 	if l.Items["templated"][0].Templated != true {
 		t.Error("not-templated should have Templated=true")
 	}
+}
+
+type person struct {
+	Links
+	Id   int
+	Name string
+}
+
+func ExampleLinks() {
+	p := person{
+		Id:   1,
+		Name: "James",
+
+		Links: Links{}.
+			Self("http://example.com/users/1").
+			Link("invoices", "http://example.com/users/1/invoices"),
+	}
+
+	b, _ := json.MarshalIndent(p, "", "\t")
+
+	fmt.Println(string(b))
+	// Output:
+	// {
+	// 	"_links": {
+	// 		"invoices": {
+	// 			"href": "http://example.com/users/1/invoices"
+	// 		},
+	// 		"self": {
+	// 			"href": "http://example.com/users/1"
+	// 		}
+	// 	},
+	// 	"Id": 1,
+	// 	"Name": "James"
+	// }
+}
+
+func ExampleLinks_multiple() {
+	p := person{
+		Id:   1,
+		Name: "James",
+
+		Links: Links{}.
+			Add("aliases", Link{Href: "http://example.com/users/4"}, Link{Href: "http://example.com/users/19"}),
+	}
+
+	b, _ := json.MarshalIndent(p, "", "\t")
+
+	fmt.Println(string(b))
+	// Output:
+	// {
+	// 	"_links": {
+	//		"aliases": [
+	//			{
+	//				"href": "http://example.com/users/4"
+	//			},
+	//			{
+	//				"href": "http://example.com/users/19"
+	//			}
+	//		]
+	// 	},
+	// 	"Id": 1,
+	// 	"Name": "James"
+	// }
 }

@@ -12,12 +12,13 @@ import (
 //
 //     type MyStruct struct {
 //       halgo.Links
-//       name string
 //     }
 //
-// This will be serialised to JSON as:
-//
-//     { "_links": {} }
+//     my := MyStruct{
+//       Links: halgo.Links{}.
+//         Self("http://example.com/").
+//         Next("http://example.com/1"),
+//     }
 type Links struct {
 	Items map[string]LinkSet `json:"_links,omitempty"`
 	// Curies CurieSet
