@@ -8,23 +8,59 @@ import (
 	"net/url"
 )
 
-// Navigator creates a new API navigator for the given URI. By default
-// it will use http.DefaultClient as its mechanism for navigating
-// relations.
+// Navigator is a mechanism for navigating HAL-compliant REST APIs. You
+// start by creating a Navigator with a base URI, then Follow the links
+// exposed by the API until you reach the place where you want to perform
+// an action.
 //
-//     nav := Navigator("http://example.com")
+// For example, to request an API exposed at api.example.com and follow a
+// link named products and GET the resulting page you'd do this:
 //
-// If you want to supply your own navigator, just assign HttpClient after
-// creation.
+//     res, err := Navigator("http://api.example.com").
+//       Follow("products").
+//       Get()
 //
-//     nav := Navigator("http://example.com")
+// To do the same thing but POST to the products page, you'd do this:
+//
+//     res, err := Navigator("http://api.example.com").
+//       Follow("products").
+//       Post("application/json", someContent)
+//
+// Multiple links followed in sequence.
+//
+//     res, err := Navigator("http://api.example.com").
+//       Follow("products").
+//       Follow("next")
+//       Get()
+//
+// Links can also be expanded with Followf if they are URI templates.
+//
+//     res, err := Navigator("http://api.example.com").
+//       Follow("products").
+//       Followf("page", halgo.P{"number": 10})
+//       Get()
+//
+// Navigation of relations is lazy. Requests will only be triggered when
+// you execute a method which returns a result. For example, this doesn't
+// perform any HTTP requests.
+//
+//     Navigator("http://api.example.com").
+//       Follow("products")
+//
+// It's only when you add a call to Get, Post, PostForm, Patch, or
+// Unmarshal to the end will any requests be triggered.
+//
+// By default a Navigator will use http.DefaultClient as its mechanism for
+// making HTTP requests. If you want to supply your own HttpClient, you
+// can assign to nav.HttpClient after creation.
+//
+//     nav := Navigator("http://api.example.com")
 //     nav.HttpClient = MyHttpClient{}
 //
 // Any Client you supply must implement halgo.HttpClient, which
-// http.Client does implicitly.
-//
-// By creating decorators for the HttpClient, logging and caching clients
-// are trivial. See LoggingHttpClient for an example.
+// http.Client does implicitly. By creating decorators for the HttpClient,
+// logging and caching clients are trivial. See LoggingHttpClient for an
+// example.
 func Navigator(uri string) navigator {
 	return navigator{
 		rootUri:    uri,
