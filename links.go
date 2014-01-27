@@ -20,7 +20,7 @@ import (
 //         Next("http://example.com/1"),
 //     }
 type Links struct {
-	Items map[string]LinkSet `json:"_links,omitempty"`
+	Items map[string]linkSet `json:"_links,omitempty"`
 	// Curies CurieSet
 }
 
@@ -71,7 +71,7 @@ func (l Links) Link(rel, href string, args ...interface{}) Links {
 //     Add("abc", halgo.Link{Href: "/a/1"}, halgo.Link{Href: "/a/2"})
 func (l Links) Add(rel string, links ...Link) Links {
 	if l.Items == nil {
-		l.Items = make(map[string]LinkSet)
+		l.Items = make(map[string]linkSet)
 	}
 
 	set, exists := l.Items[rel]
