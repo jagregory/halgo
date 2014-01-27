@@ -129,9 +129,43 @@ func (n navigator) url() (string, error) {
 		if err != nil {
 			return "", err
 		}
+
+		if url == "" {
+			return "", InvalidUrlError{url}
+		}
+
+		url, err = makeAbsoluteIfNecessary(url, n.rootUri)
+		if err != nil {
+			return "", err
+		}
 	}
 
 	return url, nil
+}
+
+// makeAbsoluteIfNecessary takes the current url and the root url, and
+// will make the current URL absolute by using the root's Host, Scheme,
+// and credentials if current isn't already absolute.
+func makeAbsoluteIfNecessary(current, root string) (string, error) {
+	currentUri, err := url.Parse(current)
+	if err != nil {
+		return "", err
+	}
+
+	if currentUri.IsAbs() {
+		return current, nil
+	}
+
+	rootUri, err := url.Parse(root)
+	if err != nil {
+		return "", err
+	}
+
+	currentUri.Scheme = rootUri.Scheme
+	currentUri.Host = rootUri.Host
+	currentUri.User = rootUri.User
+
+	return currentUri.String(), nil
 }
 
 // Get performs a GET request on the tip of the follow queue.

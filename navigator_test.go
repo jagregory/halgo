@@ -17,6 +17,7 @@ func createTestHttpServer() (*httptest.Server, map[string]int) {
 		fmt.Fprintf(w, `{
       "_links": {
         "next": { "href": "http://%s/2nd" },
+        "relative": { "href": "/2nd" },
         "one": { "href": "http://%s/a/{id}", "templated": true }
       }
     }`, r.Host, r.Host)
@@ -78,7 +79,7 @@ func TestGettingTheRoot(t *testing.T) {
 	}
 }
 
-func TestFollowingALink(t *testing.T) {
+func TestFollowingATemplatedLink(t *testing.T) {
 	ts, hits := createTestHttpServer()
 	defer ts.Close()
 
@@ -105,7 +106,33 @@ func TestFollowingALink(t *testing.T) {
 	}
 }
 
-func TestFollowingATemplatedLink(t *testing.T) {
+func TestFollowingARelativeLink(t *testing.T) {
+	ts, hits := createTestHttpServer()
+	defer ts.Close()
+
+	res, err := Navigator(ts.URL).Follow("relative").Get()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if res.StatusCode != http.StatusOK {
+		t.Errorf("Expected OK, got %d", res.StatusCode)
+	}
+
+	if res.Request.URL.String() != ts.URL+"/2nd" {
+		t.Errorf("Expected url to be %s, got %s", ts.URL+"/2nd", res.Request.URL)
+	}
+
+	if hits["/"] != 1 {
+		t.Errorf("Expected 1 request to /, got %d", hits["/"])
+	}
+
+	if hits["/2nd"] != 1 {
+		t.Errorf("Expected 1 request to /a/1, got %d", hits["/2nd"])
+	}
+}
+
+func TestFollowingALink(t *testing.T) {
 	ts, hits := createTestHttpServer()
 	defer ts.Close()
 
