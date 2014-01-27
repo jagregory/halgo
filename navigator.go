@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/url"
+	"strings"
 )
 
 // Navigator is a mechanism for navigating HAL-compliant REST APIs. You
@@ -147,7 +148,12 @@ func (n navigator) Get() (*http.Response, error) {
 		return nil, err
 	}
 
-	return n.HttpClient.Get(url)
+	req, err := newHalRequest("GET", url, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return n.HttpClient.Do(req)
 }
 
 // PostForm performs a POST request on the tip of the follow queue with
@@ -160,7 +166,14 @@ func (n navigator) PostForm(data url.Values) (*http.Response, error) {
 		return nil, err
 	}
 
-	return n.HttpClient.PostForm(url, data)
+	req, err := newHalRequest("PATCH", url, strings.NewReader(data.Encode()))
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
+
+	return n.HttpClient.Do(req)
 }
 
 // Patch parforms a PATCH request on the tip of the follow queue with the
@@ -173,7 +186,7 @@ func (n navigator) Patch(bodyType string, body io.Reader) (*http.Response, error
 		return nil, err
 	}
 
-	req, err := http.NewRequest("PATCH", url, body)
+	req, err := newHalRequest("PATCH", url, body)
 	if err != nil {
 		return nil, err
 	}
@@ -193,7 +206,14 @@ func (n navigator) Post(bodyType string, body io.Reader) (*http.Response, error)
 		return nil, err
 	}
 
-	return n.HttpClient.Post(url, bodyType, body)
+	req, err := newHalRequest("POST", url, body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", bodyType)
+
+	return n.HttpClient.Do(req)
 }
 
 // Unmarshal is a shorthand for Get followed by json.Unmarshal. Handles
@@ -213,10 +233,26 @@ func (n navigator) Unmarshal(v interface{}) error {
 	return json.Unmarshal(body, &v)
 }
 
+func newHalRequest(method, url string, body io.Reader) (*http.Request, error) {
+	req, err := http.NewRequest(method, url, body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Accept", "application/hal+json, application/json")
+
+	return req, nil
+}
+
 // getLinks does a GET on a particular URL and try to deserialise it into
 // a HAL links collection.
 func (n navigator) getLinks(uri string) (Links, error) {
-	res, err := n.HttpClient.Get(uri)
+	req, err := newHalRequest("GET", uri, nil)
+	if err != nil {
+		return Links{}, err
+	}
+
+	res, err := n.HttpClient.Do(req)
 	if err != nil {
 		return Links{}, err
 	}
