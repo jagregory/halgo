@@ -7,6 +7,8 @@
 Halgo helps with generating HAL-compliant JSON from Go structs, and
 provides a Navigator for walking a HAL-compliant API.
 
+[![GoDoc](https://godoc.org/github.com/jagregory/halgo?status.png)](https://godoc.org/github.com/jagregory/halgo)
+
 ## Install
 
     go get github.com/jagregory/halgo
