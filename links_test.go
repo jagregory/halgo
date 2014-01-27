@@ -122,13 +122,13 @@ func TestAutoSettingOfTemplated(t *testing.T) {
 	}
 }
 
-type person struct {
-	Links
-	Id   int
-	Name string
-}
-
 func ExampleLinks() {
+	type person struct {
+		Links
+		Id   int
+		Name string
+	}
+
 	p := person{
 		Id:   1,
 		Name: "James",
@@ -157,6 +157,12 @@ func ExampleLinks() {
 }
 
 func ExampleLinks_multiple() {
+	type person struct {
+		Links
+		Id   int
+		Name string
+	}
+
 	p := person{
 		Id:   1,
 		Name: "James",
