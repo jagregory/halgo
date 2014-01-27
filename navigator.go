@@ -8,6 +8,23 @@ import (
 	"net/url"
 )
 
+// Navigator creates a new API navigator for the given URI. By default
+// it will use http.DefaultClient as its mechanism for navigating
+// relations.
+//
+//     nav := Navigator("http://example.com")
+//
+// If you want to supply your own navigator, just assign HttpClient after
+// creation.
+//
+//     nav := Navigator("http://example.com")
+//     nav.HttpClient = MyHttpClient{}
+//
+// Any Client you supply must implement halgo.HttpClient, which
+// http.Client does implicitly.
+//
+// By creating decorators for the HttpClient, logging and caching clients
+// are trivial. See LoggingHttpClient for an example.
 func Navigator(uri string) navigator {
 	return navigator{
 		rootUri:    uri,
@@ -16,21 +33,34 @@ func Navigator(uri string) navigator {
 	}
 }
 
+// relation is an instruction of a relation to follow and any params to
+// expand with when executed.
 type relation struct {
 	rel    string
 	params P
 }
 
+// navigator is the API navigator
 type navigator struct {
+	// HttpClient is used to execute requests. By default it's
+	// http.DefaultClient. By decorating a HttpClient instance you can
+	// easily write loggers or caching mechanisms.
 	HttpClient HttpClient
-	path       []relation
-	rootUri    string
+
+	// path is the follow queue.
+	path []relation
+
+	// rootUri is where the navigation will begin from.
+	rootUri string
 }
 
+// Follow adds a relation to the follow queue of the navigator.
 func (n navigator) Follow(rel string) navigator {
 	return n.Followf(rel, nil)
 }
 
+// Followf adds a relation to the follow queue of the navigator, with a
+// set of parameters to expand on execution.
 func (n navigator) Followf(rel string, params P) navigator {
 	relations := make([]relation, 0, len(n.path)+1)
 	copy(n.path, relations)
@@ -43,6 +73,8 @@ func (n navigator) Followf(rel string, params P) navigator {
 	}
 }
 
+// url returns the URL of the tip of the follow queue. Will follow the
+// usual pattern of requests.
 func (n navigator) url() (string, error) {
 	url := n.rootUri
 
@@ -65,6 +97,14 @@ func (n navigator) url() (string, error) {
 	return url, nil
 }
 
+// Get performs a GET request on the tip of the follow queue.
+//
+// When a navigator is evaluated it will first request the root, then
+// request each relation on the queue until it reaches the tip. Once the
+// tip is reached it will defer to the calling method. In the case of GET
+// the last request will just be returned. For Post it will issue a post
+// to the URL of the last relation. Any error along the way will terminate
+// the walk and return immediately.
 func (n navigator) Get() (*http.Response, error) {
 	url, err := n.url()
 	if err != nil {
@@ -74,6 +114,10 @@ func (n navigator) Get() (*http.Response, error) {
 	return n.HttpClient.Get(url)
 }
 
+// PostForm performs a POST request on the tip of the follow queue with
+// the given form data.
+//
+// See GET for a note on how the navigator executes requests.
 func (n navigator) PostForm(data url.Values) (*http.Response, error) {
 	url, err := n.url()
 	if err != nil {
@@ -83,6 +127,10 @@ func (n navigator) PostForm(data url.Values) (*http.Response, error) {
 	return n.HttpClient.PostForm(url, data)
 }
 
+// Patch parforms a PATCH request on the tip of the follow queue with the
+// given bodyType and body content.
+//
+// See GET for a note on how the navigator executes requests.
 func (n navigator) Patch(bodyType string, body io.Reader) (*http.Response, error) {
 	url, err := n.url()
 	if err != nil {
@@ -99,6 +147,10 @@ func (n navigator) Patch(bodyType string, body io.Reader) (*http.Response, error
 	return n.HttpClient.Do(req)
 }
 
+// Post performs a POST request on the tip of the follow queue with the
+// given bodyType and body content.
+//
+// See GET for a note on how the navigator executes requests.
 func (n navigator) Post(bodyType string, body io.Reader) (*http.Response, error) {
 	url, err := n.url()
 	if err != nil {
@@ -108,6 +160,8 @@ func (n navigator) Post(bodyType string, body io.Reader) (*http.Response, error)
 	return n.HttpClient.Post(url, bodyType, body)
 }
 
+// Unmarshal is a shorthand for Get followed by json.Unmarshal. Handles
+// closing the response body and unmarshalling the body.
 func (n navigator) Unmarshal(v interface{}) error {
 	res, err := n.Get()
 	if err != nil {
@@ -123,6 +177,8 @@ func (n navigator) Unmarshal(v interface{}) error {
 	return json.Unmarshal(body, &v)
 }
 
+// getLinks does a GET on a particular URL and try to deserialise it into
+// a HAL links collection.
 func (n navigator) getLinks(uri string) (Links, error) {
 	res, err := n.HttpClient.Get(uri)
 	if err != nil {
