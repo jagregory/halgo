@@ -2,6 +2,8 @@ package halgo
 
 import "encoding/json"
 
+// LinkSet is represents a set of HAL links. Deserialisable from a single
+// JSON hash, or a collection of links.
 type LinkSet []Link
 
 func (l LinkSet) MarshalJSON() ([]byte, error) {

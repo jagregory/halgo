@@ -2,6 +2,8 @@ package halgo
 
 import "fmt"
 
+// LinkNotFoundError is returned when a link with the specified relation
+// couldn't be found in the links collection.
 type LinkNotFoundError struct {
 	rel string
 }

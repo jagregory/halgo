@@ -7,7 +7,8 @@ import (
 	"net/url"
 )
 
-// Interface exposing the core request generating http.Client methods
+// HttpClient exposes the core request generating methods from net/http
+// Client.
 type HttpClient interface {
 	Do(req *http.Request) (*http.Response, error)
 	Get(url string) (*http.Response, error)
@@ -16,6 +17,9 @@ type HttpClient interface {
 	PostForm(url string, data url.Values) (*http.Response, error)
 }
 
+// LoggingHttpClient is an example HttpClient implementation which wraps
+// an existing HttpClient and prints the request URL to STDOUT whenever
+// one occurs.
 type LoggingHttpClient struct {
 	HttpClient
 }

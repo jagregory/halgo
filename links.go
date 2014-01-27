@@ -7,23 +7,54 @@ import (
 	"regexp"
 )
 
+// Links represents a collection of HAL links. You can embed this struct
+// in your own structs for sweet, sweet HAL serialisation goodness.
+//
+//     type MyStruct struct {
+//       halgo.Links
+//       name string
+//     }
+//
+// This will be serialised to JSON as:
+//
+//     { "_links": {} }
 type Links struct {
 	Items map[string]LinkSet `json:"_links,omitempty"`
 	// Curies CurieSet
 }
 
+// Self creates a link with the rel as "self". Optionally can act as a
+// format string with parameters.
+//
+//     Self("http://example.com/a/1")
+//     Self("http://example.com/a/%d", id)
 func (l Links) Self(href string, args ...interface{}) Links {
 	return l.Link("self", href, args...)
 }
 
+// Next creates a link with the rel as "next". Optionally can act as a
+// format string with parameters.
+//
+//     Next("http://example.com/a/1")
+//     Next("http://example.com/a/%d", id)
 func (l Links) Next(href string, args ...interface{}) Links {
 	return l.Link("next", href, args...)
 }
 
+// Prev creates a link with the rel as "prev". Optionally can act as a
+// format string with parameters.
+//
+//     Prev("http://example.com/a/1")
+//     Prev("http://example.com/a/%d", id)
 func (l Links) Prev(href string, args ...interface{}) Links {
 	return l.Link("prev", href, args...)
 }
 
+// Link creates a link with a named rel. Optionally can act as a format
+// string with parameters.
+//
+//     Link("abc", "http://example.com/a/1")
+//     Link("abc", "http://example.com/a/%d", id)
 func (l Links) Link(rel, href string, args ...interface{}) Links {
 	if len(args) != 0 {
 		href = fmt.Sprintf(href, args...)
@@ -34,6 +65,9 @@ func (l Links) Link(rel, href string, args ...interface{}) Links {
 	return l.Add(rel, Link{Href: href, Templated: templated})
 }
 
+// Add creates multiple links with the same relation.
+//
+//     Add("abc", halgo.Link{Href: "/a/1"}, halgo.Link{Href: "/a/2"})
 func (l Links) Add(rel string, links ...Link) Links {
 	if l.Items == nil {
 		l.Items = make(map[string]LinkSet)
@@ -53,16 +87,20 @@ func (l Links) Add(rel string, links ...Link) Links {
 	return l
 }
 
+// P is a parameters map for expanding URL templates.
+//
+//     halgo.P{"id": 1}
 type P map[string]interface{}
 
-// Find the href of a link by its relationship. Returns
-// LinkNotFoundError if a link doesn't exist.
+// Href tries to find the href of a link with the supplied relation.
+// Returns LinkNotFoundError if a link doesn't exist.
 func (l Links) Href(rel string) (string, error) {
 	return l.HrefParams(rel, nil)
 }
 
-// Find the href of a link by its relationship, expanding any URI Template
-// parameters with params. Returns LinkNotFoundError if a link doesn't exist.
+// HrefParams tries to find the href of a link with the supplied relation,
+// then expands any URI template parameters. Returns LinkNotFoundError if
+// a link doesn't exist.
 func (l Links) HrefParams(rel string, params P) (string, error) {
 	if rel == "" {
 		return "", errors.New("Empty string not valid relation")
@@ -77,7 +115,7 @@ func (l Links) HrefParams(rel string, params P) (string, error) {
 	return "", LinkNotFoundError{rel}
 }
 
-// A Link with a href/URL and a relationship
+// Link represents a HAL link
 type Link struct {
 	// The "href" property is REQUIRED.
 	// Its value is either a URI [RFC3986] or a URI Template [RFC6570].
@@ -129,7 +167,7 @@ type Link struct {
 	HrefLang string `json:"hreflang,omitempty"`
 }
 
-// Expand the url template of the link
+// Expand will expand the URL template of the link with the given params.
 func (l Link) Expand(params P) (string, error) {
 	template, err := uritemplates.Parse(l.Href)
 	if err != nil {
