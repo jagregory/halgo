@@ -5,6 +5,7 @@ import (
 	"github.com/gorilla/mux"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 )
 
@@ -16,8 +17,10 @@ func createTestHttpServer() (*httptest.Server, map[string]int) {
 		hits["/"] += 1
 		fmt.Fprintf(w, `{
       "_links": {
+        "self": { "href": "/" },
         "next": { "href": "http://%s/2nd" },
         "relative": { "href": "/2nd" },
+        "child": { "href": "/child" },
         "one": { "href": "http://%s/a/{id}", "templated": true }
       }
     }`, r.Host, r.Host)
@@ -35,6 +38,11 @@ func createTestHttpServer() (*httptest.Server, map[string]int) {
 		w.WriteHeader(200)
 	})
 
+	r.HandleFunc("/child", func(w http.ResponseWriter, r *http.Request) {
+		hits["/child"] += 1
+		fmt.Fprintf(w, `{ "_links": { "parent": { "href": "/" } } }`)
+	})
+
 	return httptest.NewServer(r), hits
 }
 
@@ -47,7 +55,8 @@ func TestNavigatingToUnknownLink(t *testing.T) {
 		t.Fatal("Expected error to be raised for missing link")
 	}
 
-	if err.Error() != "Response didn't contain 'missing' link relation: available options were ['next' 'relative' 'one']" {
+	// I use HasPrefix because the order of the available relations isn't deterministic
+	if !strings.HasPrefix(err.Error(), "Response didn't contain 'missing' link relation:") {
 		t.Errorf("Unexpected error message: %s", err.Error())
 	}
 
@@ -76,6 +85,69 @@ func TestGettingTheRoot(t *testing.T) {
 
 	if hits["/"] != 1 {
 		t.Errorf("Expected 1 request to /, got %d", hits["/"])
+	}
+}
+
+func TestGettingTheRootSelf(t *testing.T) {
+	ts, hits := createTestHttpServer()
+	defer ts.Close()
+
+	nav := Navigator(ts.URL)
+	res, err := nav.Follow("self").Get()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if res.StatusCode != http.StatusOK {
+		t.Errorf("Expected OK, got %d", res.StatusCode)
+	}
+
+	if res.Request.URL.String() != ts.URL+"/" {
+		t.Errorf("Expected url to be %s, got %s", ts.URL+"/", res.Request.URL)
+	}
+
+	if hits["/"] != 2 {
+		t.Errorf("Expected 2 requests to /, got %d", hits["/"])
+	}
+}
+
+func TestGettingTheRootViaChild(t *testing.T) {
+	ts, hits := createTestHttpServer()
+	defer ts.Close()
+
+	nav := Navigator(ts.URL)
+
+	child := nav.Follow("child")
+	curl, err := child.url()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.HasSuffix(curl, "/child") {
+		t.Errorf("Expected URL for child relation to end with %s, but got %s", "/child", curl)
+	}
+
+	root := child.Follow("parent")
+	fmt.Printf("root = %v\n", root)
+	_, err = root.url()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	res, err := root.Get()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if res.StatusCode != http.StatusOK {
+		t.Errorf("Expected OK, got %d", res.StatusCode)
+	}
+
+	if res.Request.URL.String() != ts.URL+"/" {
+		t.Errorf("Expected url to be %s, got %s", ts.URL+"/", res.Request.URL)
+	}
+
+	if hits["/"] != 4 {
+		t.Errorf("Expected 4 request to /, got %d", hits["/"])
 	}
 }
 

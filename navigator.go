@@ -2,6 +2,7 @@ package halgo
 
 import (
 	"encoding/json"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -99,8 +100,7 @@ func (n navigator) Follow(rel string) navigator {
 // Followf adds a relation to the follow queue of the navigator, with a
 // set of parameters to expand on execution.
 func (n navigator) Followf(rel string, params P) navigator {
-	relations := make([]relation, 0, len(n.path)+1)
-	copy(n.path, relations)
+	relations := append([]relation{}, n.path...)
 	relations = append(relations, relation{rel: rel, params: params})
 
 	return navigator{
@@ -118,7 +118,7 @@ func (n navigator) url() (string, error) {
 	for _, link := range n.path {
 		links, err := n.getLinks(url)
 		if err != nil {
-			return "", err
+			return "", fmt.Errorf("Error getting links (%s, %v): %v", url, links, err)
 		}
 
 		if _, ok := links.Items[link.rel]; !ok {
@@ -127,7 +127,7 @@ func (n navigator) url() (string, error) {
 
 		url, err = links.HrefParams(link.rel, link.params)
 		if err != nil {
-			return "", err
+			return "", fmt.Errorf("Error getting url (%v, %v): %v", link.rel, link.params, err)
 		}
 
 		if url == "" {
@@ -136,7 +136,7 @@ func (n navigator) url() (string, error) {
 
 		url, err = makeAbsoluteIfNecessary(url, n.rootUri)
 		if err != nil {
-			return "", err
+			return "", fmt.Errorf("Error making url absolute: %v", err)
 		}
 	}
 
@@ -300,7 +300,7 @@ func (n navigator) getLinks(uri string) (Links, error) {
 	var m Links
 
 	if err := json.Unmarshal(body, &m); err != nil {
-		return Links{}, err
+		return Links{}, fmt.Errorf("Unable to unmarshal '%s': %v", string(body), err)
 	}
 
 	return m, nil
