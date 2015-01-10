@@ -122,7 +122,7 @@ func (n navigator) url() (string, error) {
 		}
 
 		if _, ok := links.Items[link.rel]; !ok {
-			return "", LinkNotFoundError{link.rel}
+			return "", LinkNotFoundError{link.rel, links.Items}
 		}
 
 		url, err = links.HrefParams(link.rel, link.params)

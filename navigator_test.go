@@ -47,7 +47,7 @@ func TestNavigatingToUnknownLink(t *testing.T) {
 		t.Fatal("Expected error to be raised for missing link")
 	}
 
-	if err.Error() != "Response didn't contain link with relation: missing" {
+	if err.Error() != "Response didn't contain 'missing' link relation: available options were ['next' 'relative' 'one']" {
 		t.Errorf("Unexpected error message: %s", err.Error())
 	}
 

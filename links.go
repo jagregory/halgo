@@ -113,7 +113,7 @@ func (l Links) HrefParams(rel string, params P) (string, error) {
 		return link.Expand(params)
 	}
 
-	return "", LinkNotFoundError{rel}
+	return "", LinkNotFoundError{rel, l.Items}
 }
 
 // Link represents a HAL link
