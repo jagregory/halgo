@@ -269,6 +269,23 @@ func (n navigator) Post(bodyType string, body io.Reader) (*http.Response, error)
 	return n.HttpClient.Do(req)
 }
 
+// Delete performs a DELETE request on the tip of the follow queue.
+//
+// See GET for a note on how the navigator executes requests.
+func (n navigator) Delete() (*http.Response, error) {
+	url, err := n.url()
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := newHalRequest("DELETE", url, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return n.HttpClient.Do(req)
+}
+
 // Unmarshal is a shorthand for Get followed by json.Unmarshal. Handles
 // closing the response body and unmarshalling the body.
 func (n navigator) Unmarshal(v interface{}) error {
