@@ -110,6 +110,25 @@ func (n navigator) Followf(rel string, params P) navigator {
 	}
 }
 
+// Location follows the Location header from a response.  It makes the URI
+// absolute, if necessary.
+func (n navigator) Location(resp *http.Response) (navigator, error) {
+	_, exists := resp.Header["Location"]
+	if !exists {
+		return n, fmt.Errorf("Response didn't contain a Location header")
+	}
+	loc := resp.Header.Get("Location")
+	lurl, err := makeAbsoluteIfNecessary(loc, n.rootUri)
+	if err != nil {
+		return n, err
+	}
+	return navigator{
+		HttpClient: n.HttpClient,
+		path:       []relation{},
+		rootUri:    lurl,
+	}, nil
+}
+
 // url returns the URL of the tip of the follow queue. Will follow the
 // usual pattern of requests.
 func (n navigator) url() (string, error) {
