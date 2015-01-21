@@ -60,6 +60,11 @@ func TestNavigatingToUnknownLink(t *testing.T) {
 		t.Errorf("Unexpected error message: %s", err.Error())
 	}
 
+	_, err = Navigator(ts.URL).Follow("missing").Options()
+	if err == nil {
+		t.Fatal("Expected error to be raised for OPTIONS call to missing link")
+	}
+
 	if _, ok := err.(LinkNotFoundError); !ok {
 		t.Error("Expected error to be LinkNotFoundError")
 	}
@@ -86,6 +91,13 @@ func TestGettingTheRoot(t *testing.T) {
 	if hits["/"] != 1 {
 		t.Errorf("Expected 1 request to /, got %d", hits["/"])
 	}
+
+	// If Get works, Options should work as well
+	res, err = nav.Options()
+	if err != nil {
+		t.Fatal(err)
+	}
+
 }
 
 func TestGettingTheRootSelf(t *testing.T) {
