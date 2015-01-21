@@ -139,7 +139,6 @@ func TestGettingTheRootViaChild(t *testing.T) {
 	}
 
 	root := child.Follow("parent")
-	fmt.Printf("root = %v\n", root)
 	_, err = root.url()
 	if err != nil {
 		t.Fatal(err)

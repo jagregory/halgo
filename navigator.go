@@ -264,6 +264,26 @@ func (n navigator) Patch(bodyType string, body io.Reader) (*http.Response, error
 	return n.HttpClient.Do(req)
 }
 
+// Put parforms a PUT request on the tip of the follow queue with the
+// given bodyType and body content.
+//
+// See GET for a note on how the navigator executes requests.
+func (n navigator) Put(bodyType string, body io.Reader) (*http.Response, error) {
+	url, err := n.url()
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := newHalRequest("PUT", url, body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", bodyType)
+
+	return n.HttpClient.Do(req)
+}
+
 // Post performs a POST request on the tip of the follow queue with the
 // given bodyType and body content.
 //
