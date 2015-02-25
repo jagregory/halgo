@@ -67,6 +67,7 @@ func Navigator(uri string) navigator {
 	return navigator{
 		rootUri:    uri,
 		path:       []relation{},
+		header:     http.Header{},
 		HttpClient: http.DefaultClient,
 	}
 }
@@ -76,6 +77,7 @@ func Navigator(uri string) navigator {
 type relation struct {
 	rel    string
 	params P
+	header http.Header
 }
 
 // navigator is the API navigator
@@ -84,6 +86,8 @@ type navigator struct {
 	// http.DefaultClient. By decorating a HttpClient instance you can
 	// easily write loggers or caching mechanisms.
 	HttpClient HttpClient
+
+	header http.Header
 
 	// path is the follow queue.
 	path []relation
@@ -97,17 +101,82 @@ func (n navigator) Follow(rel string) navigator {
 	return n.Followf(rel, nil)
 }
 
+func (n navigator) cloneHeader() http.Header {
+	h2 := make(http.Header, len(n.header))
+	for k, vv := range n.header {
+		vv2 := make([]string, len(vv))
+		copy(vv2, vv)
+		h2[k] = vv2
+	}
+	return h2
+}
+
 // Followf adds a relation to the follow queue of the navigator, with a
 // set of parameters to expand on execution.
 func (n navigator) Followf(rel string, params P) navigator {
 	relations := append([]relation{}, n.path...)
-	relations = append(relations, relation{rel: rel, params: params})
+	relations = append(relations, relation{
+		rel:    rel,
+		params: params,
+		header: http.Header{},
+	})
 
 	return navigator{
 		HttpClient: n.HttpClient,
+		header:     n.cloneHeader(),
 		path:       relations,
 		rootUri:    n.rootUri,
 	}
+}
+
+// SetGlobalHeader sets a header to all requests in the chain
+func (n navigator) SetGlobalHeader(header string, value string) navigator {
+	h := n.cloneHeader()
+	h.Set(header, value)
+	return navigator{
+		HttpClient: n.HttpClient,
+		header:     h,
+		path:       n.path,
+		rootUri:    n.rootUri,
+	}
+}
+
+// SetFollowHeader sets a header to for a specific follow command
+func (n navigator) SetFollowHeader(header string, value string) navigator {
+	if len(n.path) == 0 {
+		// No way to return an error, but this is almost certainly an error
+		// because this does nothing (since there is no relation to add
+		// this header to.
+		return n
+	}
+	var h *http.Header = &n.path[len(n.path)-1].header
+	h.Set(header, value)
+	return n
+}
+
+// AddGlobalHeader adds a header to all requests in the chain
+func (n navigator) AddGlobalHeader(header string, value string) navigator {
+	h := n.cloneHeader()
+	h.Add(header, value)
+	return navigator{
+		HttpClient: n.HttpClient,
+		header:     h,
+		path:       n.path,
+		rootUri:    n.rootUri,
+	}
+}
+
+// AddFollowHeader adds a header to for a specific follow command
+func (n navigator) AddFollowHeader(header string, value string) navigator {
+	if len(n.path) == 0 {
+		// No way to return an error, but this is almost certainly an error
+		// because this does nothing (since there is no relation to add
+		// this header to.
+		return n
+	}
+	var h *http.Header = &n.path[len(n.path)-1].header
+	h.Add(header, value)
+	return n
 }
 
 // Location follows the Location header from a response.  It makes the URI
@@ -124,9 +193,18 @@ func (n navigator) Location(resp *http.Response) (navigator, error) {
 	}
 	return navigator{
 		HttpClient: n.HttpClient,
+		header:     n.cloneHeader(),
 		path:       []relation{},
 		rootUri:    lurl,
 	}, nil
+}
+
+func (n navigator) mergeHeaders(req *http.Request) {
+	for k, vs := range n.header {
+		for _, v := range vs {
+			req.Header.Add(k, v)
+		}
+	}
 }
 
 // url returns the URL of the tip of the follow queue. Will follow the
@@ -206,6 +284,8 @@ func (n navigator) Get() (*http.Response, error) {
 		return nil, err
 	}
 
+	n.mergeHeaders(req)
+
 	return n.HttpClient.Do(req)
 }
 
@@ -220,6 +300,8 @@ func (n navigator) Options() (*http.Response, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	n.mergeHeaders(req)
 
 	return n.HttpClient.Do(req)
 }
@@ -241,6 +323,8 @@ func (n navigator) PostForm(data url.Values) (*http.Response, error) {
 
 	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
 
+	n.mergeHeaders(req)
+
 	return n.HttpClient.Do(req)
 }
 
@@ -260,6 +344,8 @@ func (n navigator) Patch(bodyType string, body io.Reader) (*http.Response, error
 	}
 
 	req.Header.Add("Content-Type", bodyType)
+
+	n.mergeHeaders(req)
 
 	return n.HttpClient.Do(req)
 }
@@ -281,6 +367,8 @@ func (n navigator) Put(bodyType string, body io.Reader) (*http.Response, error) 
 
 	req.Header.Add("Content-Type", bodyType)
 
+	n.mergeHeaders(req)
+
 	return n.HttpClient.Do(req)
 }
 
@@ -301,6 +389,8 @@ func (n navigator) Post(bodyType string, body io.Reader) (*http.Response, error)
 
 	req.Header.Add("Content-Type", bodyType)
 
+	n.mergeHeaders(req)
+
 	return n.HttpClient.Do(req)
 }
 
@@ -317,6 +407,8 @@ func (n navigator) Delete() (*http.Response, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	n.mergeHeaders(req)
 
 	return n.HttpClient.Do(req)
 }
@@ -356,6 +448,8 @@ func (n navigator) getLinks(uri string) (Links, error) {
 	if err != nil {
 		return Links{}, err
 	}
+
+	n.mergeHeaders(req)
 
 	res, err := n.HttpClient.Do(req)
 	if err != nil {
