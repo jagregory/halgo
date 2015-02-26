@@ -126,23 +126,6 @@ func (n navigator) Extract(rel string) navigator {
 	return n.Extractf(rel, nil)
 }
 
-// Followf adds a relation to the follow queue of the navigator, with a
-// set of parameters to expand on execution.
-func (n navigator) Extractf(rel string, params P) navigator {
-	relations := append([]Operation{}, n.path...)
-	relations = append(relations, &extract{
-		rel:    rel,
-		header: http.Header{},
-	})
-
-	return navigator{
-		HttpClient:    n.HttpClient,
-		sessionHeader: n.cloneHeader(),
-		path:          relations,
-		rootUri:       n.rootUri,
-	}
-}
-
 // cloneHeader makes a new copy of the sessionHeaders.  This allows each
 // navigator generated as a chain of operations to be truly
 // independent of each other (and potentially diverge)
