@@ -64,6 +64,51 @@ res, err := halgo.Navigator("http://example.com").
   Get()
 ```
 
+The following operations can be chained together to navigate a HAL-compliant API:
+
+   * `Follow(rel string)` - Follow the relation `rel`
+   * `Followf(rel string, params P)` - Follow the relation `rel` and
+     use `params` to evaluate any underlying template.
+   * `Extract(rel string)` - Fetch the location of an embedded
+     resource named `rel` and navigate to the full representation of
+     that resource (i.e., follow its `self` URI).
+   * `SetSessionHeader(header string, value string)` - Set a new
+     header to all requests in this chain (e.g., `Authorization` header)
+   * `AddSessionHeader(header string, value string)` - Add a new
+     header to all requests in this chain.
+   * `SetRequestHeader(header string, value string)` - Set a new
+     header to the operation immediately preceeding this call in the chain.
+   * `AddRequestHeader(header string, value string)` - Add a new
+     header to the operation immediately preceeding this call in the chain.
+
+These chains can be terminated by the following requests (each of
+which returns an `*http.Response` or `error`):
+
+   * `Get(headers ...http.Header)` - Perform a `GET` request (with optional additional headers)
+   * `Options(headers ...http.Header)` - Perform an `OPTIONS` request
+     (with optional additional headers)
+   * `Post(bodyType string, body io.Reader, headers ...http.Header)` - Perform a
+     `POST` request with `body` of
+	 content type `bodyType` (and optional additional headers)
+   * `PostForm(data url.Values, headers ...http.Header)` - Perform a
+     `POST` request with form `data` (and optional additional
+     headers)
+   * `Patch(bodyType string, body io.Reader, headers
+	 ...http.Header)` - Perform a `PATCH` request with `body` of
+	 content type `bodyType` (and optional additional headers)
+   * `Put(bodyType string, body io.Reader, headers
+	 ...http.Header)` - Perform a `PUT` request with `body` of
+	 content type `bodyType` (and optional additional headers)
+   * `Delete(headers ...http.Header)` - Perform a `DELETE` request
+     (with optional additional headers)
+
+In addition, following any request that returns a `Location` header
+(typically a `Post`), a new navigator instance can be created that is
+rooted at the location specified by the `Location` header by calling:
+
+   * `Location(resp *http.Response)` - which returns either a new
+	 navigator or an error
+
 Deserialising a resource: 
 
 ```go
