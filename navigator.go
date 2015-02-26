@@ -65,11 +65,58 @@ import (
 // example.
 func Navigator(uri string) navigator {
 	return navigator{
-		rootUri:    uri,
-		path:       []relation{},
-		header:     http.Header{},
-		HttpClient: http.DefaultClient,
+		rootUri:       uri,
+		path:          []relation{},
+		sessionHeader: http.Header{},
+		HttpClient:    http.DefaultClient,
 	}
+}
+
+type Operation interface {
+	Fetch(n navigator, url string) (string, error)
+	SetHeader(header string, value string)
+	AddHeader(header string, value string)
+	// Not sure yet
+}
+
+type follow struct {
+	rel    string
+	params P
+	header http.Header
+}
+
+func (link *follow) AddHeader(header string, value string) {
+	link.header.Add(header, value)
+}
+
+func (link *follow) SetHeader(header string, value string) {
+	link.header.Set(header, value)
+}
+
+func (link follow) Fetch(n navigator, url string) (string, error) {
+	links, err := n.getLinks(url)
+	if err != nil {
+		return "", fmt.Errorf("Error getting links (%s, %v): %v", url, links, err)
+	}
+
+	if _, ok := links.Items[link.rel]; !ok {
+		return "", LinkNotFoundError{link.rel, links.Items}
+	}
+
+	url, err = links.HrefParams(link.rel, link.params)
+	if err != nil {
+		return "", fmt.Errorf("Error getting url (%v, %v): %v", link.rel, link.params, err)
+	}
+
+	if url == "" {
+		return "", InvalidUrlError{url}
+	}
+
+	if err != nil {
+		return "", fmt.Errorf("Error making url absolute: %v", err)
+	}
+
+	return url, nil
 }
 
 // relation is an instruction of a relation to follow and any params to
@@ -87,7 +134,10 @@ type navigator struct {
 	// easily write loggers or caching mechanisms.
 	HttpClient HttpClient
 
-	header http.Header
+	// sessionHeader is a structure used to store the headers for
+	// all requests made by the navigator (as opposed to those
+	// that might be included on a per request basis)
+	sessionHeader http.Header
 
 	// path is the follow queue.
 	path []relation
@@ -102,8 +152,8 @@ func (n navigator) Follow(rel string) navigator {
 }
 
 func (n navigator) cloneHeader() http.Header {
-	h2 := make(http.Header, len(n.header))
-	for k, vv := range n.header {
+	h2 := make(http.Header, len(n.sessionHeader))
+	for k, vv := range n.sessionHeader {
 		vv2 := make([]string, len(vv))
 		copy(vv2, vv)
 		h2[k] = vv2
@@ -122,22 +172,22 @@ func (n navigator) Followf(rel string, params P) navigator {
 	})
 
 	return navigator{
-		HttpClient: n.HttpClient,
-		header:     n.cloneHeader(),
-		path:       relations,
-		rootUri:    n.rootUri,
+		HttpClient:    n.HttpClient,
+		sessionHeader: n.cloneHeader(),
+		path:          relations,
+		rootUri:       n.rootUri,
 	}
 }
 
-// SetGlobalHeader sets a header to all requests in the chain
-func (n navigator) SetGlobalHeader(header string, value string) navigator {
+// SetSessionHeader sets a header to all requests in the chain
+func (n navigator) SetSessionHeader(header string, value string) navigator {
 	h := n.cloneHeader()
 	h.Set(header, value)
 	return navigator{
-		HttpClient: n.HttpClient,
-		header:     h,
-		path:       n.path,
-		rootUri:    n.rootUri,
+		HttpClient:    n.HttpClient,
+		sessionHeader: h,
+		path:          n.path,
+		rootUri:       n.rootUri,
 	}
 }
 
@@ -154,15 +204,15 @@ func (n navigator) SetFollowHeader(header string, value string) navigator {
 	return n
 }
 
-// AddGlobalHeader adds a header to all requests in the chain
-func (n navigator) AddGlobalHeader(header string, value string) navigator {
+// AddSessionHeader adds a header to all requests in the chain
+func (n navigator) AddSessionHeader(header string, value string) navigator {
 	h := n.cloneHeader()
 	h.Add(header, value)
 	return navigator{
-		HttpClient: n.HttpClient,
-		header:     h,
-		path:       n.path,
-		rootUri:    n.rootUri,
+		HttpClient:    n.HttpClient,
+		sessionHeader: h,
+		path:          n.path,
+		rootUri:       n.rootUri,
 	}
 }
 
@@ -192,15 +242,15 @@ func (n navigator) Location(resp *http.Response) (navigator, error) {
 		return n, err
 	}
 	return navigator{
-		HttpClient: n.HttpClient,
-		header:     n.cloneHeader(),
-		path:       []relation{},
-		rootUri:    lurl,
+		HttpClient:    n.HttpClient,
+		sessionHeader: n.cloneHeader(),
+		path:          []relation{},
+		rootUri:       lurl,
 	}, nil
 }
 
 func (n navigator) mergeHeaders(req *http.Request) {
-	for k, vs := range n.header {
+	for k, vs := range n.sessionHeader {
 		for _, v := range vs {
 			req.Header.Add(k, v)
 		}
