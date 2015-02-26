@@ -123,7 +123,18 @@ func (n navigator) Followf(rel string, params P) navigator {
 
 // Follow adds a relation to the follow queue of the navigator.
 func (n navigator) Extract(rel string) navigator {
-	return n.Extractf(rel, nil)
+	relations := append([]Operation{}, n.path...)
+	relations = append(relations, &extract{
+		rel:    rel,
+		header: http.Header{},
+	})
+
+	return navigator{
+		HttpClient:    n.HttpClient,
+		sessionHeader: n.cloneHeader(),
+		path:          relations,
+		rootUri:       n.rootUri,
+	}
 }
 
 // cloneHeader makes a new copy of the sessionHeaders.  This allows each
