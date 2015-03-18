@@ -190,6 +190,21 @@ func (n navigator) Get() (*http.Response, error) {
 	return n.HttpClient.Do(req)
 }
 
+// Options performs an OPTIONS request on the tip of the follow queue.
+func (n navigator) Options() (*http.Response, error) {
+	url, err := n.url()
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := newHalRequest("OPTIONS", url, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return n.HttpClient.Do(req)
+}
+
 // PostForm performs a POST request on the tip of the follow queue with
 // the given form data.
 //
