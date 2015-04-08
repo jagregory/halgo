@@ -17,7 +17,7 @@ func (link *extract) SetHeader(header string, value string) {
 	link.header.Set(header, value)
 }
 
-func (link extract) Fetch(n navigator, url string) (string, error) {
+func (link extract) Fetch(n Nav, url string) (string, error) {
 	return n.getEmbedded(url, link.rel, link.header)
 }
 
