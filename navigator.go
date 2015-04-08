@@ -229,7 +229,7 @@ func mergeHeaders(req *http.Request, headers ...http.Header) {
 
 // url returns the URL of the tip of the follow queue. Will follow the
 // usual pattern of requests.
-func (n navigator) url() (string, error) {
+func (n navigator) Url() (string, error) {
 	var err error
 	url := n.rootUri
 
@@ -281,7 +281,7 @@ func makeAbsoluteIfNecessary(current, root string) (string, error) {
 // to the URL of the last relation. Any error along the way will terminate
 // the walk and return immediately.
 func (n navigator) Get(headers ...http.Header) (*http.Response, error) {
-	url, err := n.url()
+	url, err := n.Url()
 	if err != nil {
 		return nil, err
 	}
@@ -299,7 +299,7 @@ func (n navigator) Get(headers ...http.Header) (*http.Response, error) {
 
 // Options performs an OPTIONS request on the tip of the follow queue.
 func (n navigator) Options(headers ...http.Header) (*http.Response, error) {
-	url, err := n.url()
+	url, err := n.Url()
 	if err != nil {
 		return nil, err
 	}
@@ -320,7 +320,7 @@ func (n navigator) Options(headers ...http.Header) (*http.Response, error) {
 //
 // See GET for a note on how the navigator executes requests.
 func (n navigator) PostForm(data url.Values, headers ...http.Header) (*http.Response, error) {
-	url, err := n.url()
+	url, err := n.Url()
 	if err != nil {
 		return nil, err
 	}
@@ -343,7 +343,7 @@ func (n navigator) PostForm(data url.Values, headers ...http.Header) (*http.Resp
 //
 // See GET for a note on how the navigator executes requests.
 func (n navigator) Patch(bodyType string, body io.Reader, headers ...http.Header) (*http.Response, error) {
-	url, err := n.url()
+	url, err := n.Url()
 	if err != nil {
 		return nil, err
 	}
@@ -366,7 +366,7 @@ func (n navigator) Patch(bodyType string, body io.Reader, headers ...http.Header
 //
 // See GET for a note on how the navigator executes requests.
 func (n navigator) Put(bodyType string, body io.Reader, headers ...http.Header) (*http.Response, error) {
-	url, err := n.url()
+	url, err := n.Url()
 	if err != nil {
 		return nil, err
 	}
@@ -389,7 +389,7 @@ func (n navigator) Put(bodyType string, body io.Reader, headers ...http.Header) 
 //
 // See GET for a note on how the navigator executes requests.
 func (n navigator) Post(bodyType string, body io.Reader, headers ...http.Header) (*http.Response, error) {
-	url, err := n.url()
+	url, err := n.Url()
 	if err != nil {
 		return nil, err
 	}
@@ -411,7 +411,7 @@ func (n navigator) Post(bodyType string, body io.Reader, headers ...http.Header)
 //
 // See GET for a note on how the navigator executes requests.
 func (n navigator) Delete(headers ...http.Header) (*http.Response, error) {
-	url, err := n.url()
+	url, err := n.Url()
 	if err != nil {
 		return nil, err
 	}

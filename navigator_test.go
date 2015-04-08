@@ -130,7 +130,7 @@ func TestGettingTheRootViaChild(t *testing.T) {
 	nav := Navigator(ts.URL)
 
 	child := nav.Follow("child")
-	curl, err := child.url()
+	curl, err := child.Url()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -139,7 +139,7 @@ func TestGettingTheRootViaChild(t *testing.T) {
 	}
 
 	root := child.Follow("parent")
-	_, err = root.url()
+	_, err = root.Url()
 	if err != nil {
 		t.Fatal(err)
 	}
