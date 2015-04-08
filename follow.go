@@ -19,7 +19,7 @@ func (link *follow) SetHeader(header string, value string) {
 	link.header.Set(header, value)
 }
 
-func (link follow) Fetch(n navigator, url string) (string, error) {
+func (link follow) Fetch(n Nav, url string) (string, error) {
 	links, err := n.getLinks(url, link.header)
 	if err != nil {
 		return "", fmt.Errorf("Error getting links (%s, %v): %v", url, links, err)
