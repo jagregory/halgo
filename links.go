@@ -107,13 +107,17 @@ func (l Links) HrefParams(rel string, params P) (string, error) {
 		return "", errors.New("Empty string not valid relation")
 	}
 
-	links := l.Items[rel]
-	if len(links) > 0 {
-		link := links[0] // TODO: handle multiple here
-		return link.Expand(params)
+	links, exists := l.Items[rel]
+	if !exists {
+		return "", LinkNotFoundError{rel, l.Items}
 	}
 
-	return "", LinkNotFoundError{rel, l.Items}
+	if len(links) == 0 {
+		return "", LinkNotFoundError{rel + "[0]", l.Items}
+	}
+
+	link := links[0] // TODO: handle multiple here
+	return link.Expand(params)
 }
 
 // Link represents a HAL link
