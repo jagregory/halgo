@@ -3,8 +3,9 @@ package halgo
 import (
 	"errors"
 	"fmt"
-	"github.com/jtacoma/uritemplates"
 	"regexp"
+
+	"github.com/jtacoma/uritemplates"
 )
 
 // Links represents a collection of HAL links. You can embed this struct
@@ -170,6 +171,9 @@ type Link struct {
 	// Its value is a string and is intended for indicating the language of
 	// the target resource (as defined by [RFC5988]).
 	HrefLang string `json:"hreflang,omitempty"`
+
+	// The "Method" property is OPTIONAL.
+	Method string `json:"method,omitempty"`
 }
 
 // Expand will expand the URL template of the link with the given params.
