@@ -59,15 +59,26 @@ import (
 //     nav := Navigator("http://api.example.com")
 //     nav.HttpClient = MyHttpClient{}
 //
+// If you want to add additional http headers to your request, you
+// can apply to the navigator before the request is generated.
+// Headers should be supplied in a map[string]string format
+//
+//     nav := Navigator("http://api.example.com")
+// 	   headers := map[string]string{}
+//     headers["UserHeader1"] = "UserHeaderValue1"
+//     headers["UserHeader2"] = "UserHeaderValue2"
+//     nav = nav.AddHeaders(headers)
+//
 // Any Client you supply must implement halgo.HttpClient, which
 // http.Client does implicitly. By creating decorators for the HttpClient,
 // logging and caching clients are trivial. See LoggingHttpClient for an
 // example.
 func Navigator(uri string) navigator {
 	return navigator{
-		rootUri:    uri,
-		path:       []relation{},
-		HttpClient: http.DefaultClient,
+		rootUri:     uri,
+		path:        []relation{},
+		HttpClient:  http.DefaultClient,
+		httpheaders: map[string]string{},
 	}
 }
 
@@ -90,6 +101,9 @@ type navigator struct {
 
 	// rootUri is where the navigation will begin from.
 	rootUri string
+
+	// httpheaders is a map of optional headers that can be applied to a http request
+	httpheaders map[string]string
 }
 
 // Follow adds a relation to the follow queue of the navigator.
@@ -205,6 +219,13 @@ func (n navigator) Get() (*http.Response, error) {
 	if err != nil {
 		return nil, err
 	}
+	// Apply additional http headers if they have been added to the navigator
+	if len(n.httpheaders) > 0 {
+		for k, v := range n.httpheaders {
+			req.Header.Add(k, v)
+		}
+	}
+	fmt.Println(req)
 
 	return n.HttpClient.Do(req)
 }
@@ -316,6 +337,13 @@ func (n navigator) Unmarshal(v interface{}) error {
 	}
 
 	return json.Unmarshal(body, &v)
+}
+
+// Addheaders allows optional headers to be applied to the navigator
+// these headers will be applied to the http request before it is executed
+func (n navigator) AddHeaders(h map[string]string) navigator {
+	n.httpheaders = h
+	return n
 }
 
 func newHalRequest(method, url string, body io.Reader) (*http.Request, error) {
