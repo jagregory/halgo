@@ -1,10 +1,10 @@
 package halgo_test
 
 import (
-	"."
 	"encoding/json"
 	"fmt"
-	"net/http"
+
+	"github.com/jagregory/halgo"
 )
 
 func ExampleLinks() {
@@ -98,29 +98,29 @@ func ExampleLinks_multiple() {
 	// }
 }
 
-func ExampleNavigator() {
-	var me struct{ Username string }
+// func ExampleNavigator() {
+// 	var me struct{ Username string }
 
-	halgo.Navigator("http://haltalk.herokuapp.com/").
-		Followf("ht:me", halgo.P{"name": "jagregory"}).
-		Unmarshal(&me)
+// 	halgo.Navigator("http://haltalk.herokuapp.com/").
+// 		Followf("ht:me", halgo.P{"name": "jagregory"}).
+// 		Unmarshal(&me)
 
-	fmt.Println(me.Username)
-	// Output: jagregory
-}
+// 	fmt.Println(me.Username)
+// 	// Output: jagregory
+// }
 
-func ExampleNavigator_logging() {
-	var me struct{ Username string }
+// func ExampleNavigator_logging() {
+// 	var me struct{ Username string }
 
-	nav := halgo.Navigator("http://haltalk.herokuapp.com/")
-	nav.HttpClient = halgo.LoggingHttpClient{http.DefaultClient}
+// 	nav := halgo.Navigator("http://haltalk.herokuapp.com/")
+// 	nav.HttpClient = halgo.LoggingHttpClient{http.DefaultClient}
 
-	nav.Followf("ht:me", halgo.P{"name": "jagregory"}).
-		Unmarshal(&me)
+// 	nav.Followf("ht:me", halgo.P{"name": "jagregory"}).
+// 		Unmarshal(&me)
 
-	fmt.Printf("Username: %s", me.Username)
-	// Output:
-	// GET http://haltalk.herokuapp.com/
-	// GET http://haltalk.herokuapp.com/users/jagregory
-	// Username: jagregory
-}
+// 	fmt.Printf("Username: %s", me.Username)
+// 	// Output:
+// 	// GET http://haltalk.herokuapp.com/
+// 	// GET http://haltalk.herokuapp.com/users/jagregory
+// 	// Username: jagregory
+// }
