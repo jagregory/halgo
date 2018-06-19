@@ -10,34 +10,34 @@ import (
 	"strings"
 )
 
-// Navigator is a mechanism for navigating HAL-compliant REST APIs. You
-// start by creating a Navigator with a base URI, then Follow the links
+// Nav is a mechanism for navigating HAL-compliant REST APIs. You
+// start by creating a Nav with a base URI, then Follow the links
 // exposed by the API until you reach the place where you want to perform
 // an action.
 //
 // For example, to request an API exposed at api.example.com and follow a
 // link named products and GET the resulting page you'd do this:
 //
-//     res, err := Navigator("http://api.example.com").
+//     res, err := Nav("http://api.example.com").
 //       Follow("products").
 //       Get()
 //
 // To do the same thing but POST to the products page, you'd do this:
 //
-//     res, err := Navigator("http://api.example.com").
+//     res, err := Nav("http://api.example.com").
 //       Follow("products").
 //       Post("application/json", someContent)
 //
 // Multiple links followed in sequence.
 //
-//     res, err := Navigator("http://api.example.com").
+//     res, err := Nav("http://api.example.com").
 //       Follow("products").
 //       Follow("next")
 //       Get()
 //
 // Links can also be expanded with Followf if they are URI templates.
 //
-//     res, err := Navigator("http://api.example.com").
+//     res, err := Nav("http://api.example.com").
 //       Follow("products").
 //       Followf("page", halgo.P{"number": 10})
 //       Get()
@@ -46,17 +46,17 @@ import (
 // you execute a method which returns a result. For example, this doesn't
 // perform any HTTP requests.
 //
-//     Navigator("http://api.example.com").
+//     Nav("http://api.example.com").
 //       Follow("products")
 //
 // It's only when you add a call to Get, Post, PostForm, Patch, or
 // Unmarshal to the end will any requests be triggered.
 //
-// By default a Navigator will use http.DefaultClient as its mechanism for
+// By default a Nav will use http.DefaultClient as its mechanism for
 // making HTTP requests. If you want to supply your own HttpClient, you
 // can assign to nav.HttpClient after creation.
 //
-//     nav := Navigator("http://api.example.com")
+//     nav := Nav("http://api.example.com")
 //     nav.HttpClient = MyHttpClient{}
 //
 // If you want to add additional http headers to your request, you
@@ -73,31 +73,36 @@ import (
 // http.Client does implicitly. By creating decorators for the HttpClient,
 // logging and caching clients are trivial. See LoggingHttpClient for an
 // example.
-func Navigator(uri string) navigator {
-	return navigator{
+func Navigator(uri string) Nav {
+	return Nav{
 		rootUri:     uri,
-		path:        []relation{},
+		path:        []Operation{},
 		HttpClient:  http.DefaultClient,
 		httpheaders: map[string]string{},
 	}
 }
 
-// relation is an instruction of a relation to follow and any params to
-// expand with when executed.
-type relation struct {
-	rel    string
-	params P
+type Operation interface {
+	Fetch(n Nav, url string) (string, error)
+	SetHeader(header string, value string)
+	AddHeader(header string, value string)
+	// Not sure yet
 }
 
-// navigator is the API navigator
-type navigator struct {
+// Nav is the API Nav
+type Nav struct {
 	// HttpClient is used to execute requests. By default it's
 	// http.DefaultClient. By decorating a HttpClient instance you can
 	// easily write loggers or caching mechanisms.
 	HttpClient HttpClient
 
+	// sessionHeader is a structure used to store the headers for
+	// all requests made by the Nav (as opposed to those
+	// that might be included on a per request basis)
+	sessionHeader http.Header
+
 	// path is the follow queue.
-	path []relation
+	path []Operation
 
 	// rootUri is where the navigation will begin from.
 	rootUri string
@@ -106,27 +111,108 @@ type navigator struct {
 	httpheaders map[string]string
 }
 
-// Follow adds a relation to the follow queue of the navigator.
-func (n navigator) Follow(rel string) navigator {
+// Follow adds a relation to the follow queue of the Nav.
+func (n Nav) Follow(rel string) Nav {
 	return n.Followf(rel, nil)
 }
 
-// Followf adds a relation to the follow queue of the navigator, with a
+// Followf adds a relation to the follow queue of the Nav, with a
 // set of parameters to expand on execution.
-func (n navigator) Followf(rel string, params P) navigator {
-	relations := append([]relation{}, n.path...)
-	relations = append(relations, relation{rel: rel, params: params})
+func (n Nav) Followf(rel string, params P) Nav {
+	relations := append([]Operation{}, n.path...)
+	relations = append(relations, &follow{
+		rel:    rel,
+		params: params,
+		header: http.Header{},
+	})
 
-	return navigator{
-		HttpClient: n.HttpClient,
-		path:       relations,
-		rootUri:    n.rootUri,
+	return Nav{
+		HttpClient:    n.HttpClient,
+		sessionHeader: n.cloneHeader(),
+		path:          relations,
+		rootUri:       n.rootUri,
 	}
+}
+
+// Follow adds a relation to the follow queue of the Nav.
+func (n Nav) Extract(rel string) Nav {
+	relations := append([]Operation{}, n.path...)
+	relations = append(relations, &extract{
+		rel:    rel,
+		header: http.Header{},
+	})
+
+	return Nav{
+		HttpClient:    n.HttpClient,
+		sessionHeader: n.cloneHeader(),
+		path:          relations,
+		rootUri:       n.rootUri,
+	}
+}
+
+// cloneHeader makes a new copy of the sessionHeaders.  This allows each
+// Nav generated as a chain of operations to be truly
+// independent of each other (and potentially diverge)
+func (n Nav) cloneHeader() http.Header {
+	h2 := make(http.Header, len(n.sessionHeader))
+	for k, vv := range n.sessionHeader {
+		vv2 := make([]string, len(vv))
+		copy(vv2, vv)
+		h2[k] = vv2
+	}
+	return h2
+}
+
+// SetSessionHeader sets a header to all requests in the chain
+func (n Nav) SetSessionHeader(header string, value string) Nav {
+	h := n.cloneHeader()
+	h.Set(header, value)
+	return Nav{
+		HttpClient:    n.HttpClient,
+		sessionHeader: h,
+		path:          n.path,
+		rootUri:       n.rootUri,
+	}
+}
+
+// AddSessionHeader adds a header to all requests in the chain
+func (n Nav) AddSessionHeader(header string, value string) Nav {
+	h := n.cloneHeader()
+	h.Add(header, value)
+	return Nav{
+		HttpClient:    n.HttpClient,
+		sessionHeader: h,
+		path:          n.path,
+		rootUri:       n.rootUri,
+	}
+}
+
+func (n Nav) SetRequestHeader(header string, value string) Nav {
+	if len(n.path) == 0 {
+		// No way to return an error, but this is almost certainly an error
+		// because this does nothing (since there is no relation to add
+		// this header to.
+		return n
+	}
+	n.path[len(n.path)-1].SetHeader(header, value)
+	return n
+}
+
+// AddFollowHeader adds a header to for a specific follow command
+func (n Nav) AddRequestHeader(header string, value string) Nav {
+	if len(n.path) == 0 {
+		// No way to return an error, but this is almost certainly an error
+		// because this does nothing (since there is no relation to add
+		// this header to.
+		return n
+	}
+	n.path[len(n.path)-1].AddHeader(header, value)
+	return n
 }
 
 // Location follows the Location header from a response.  It makes the URI
 // absolute, if necessary.
-func (n navigator) Location(resp *http.Response) (navigator, error) {
+func (n Nav) Location(resp *http.Response) (Nav, error) {
 	_, exists := resp.Header["Location"]
 	if !exists {
 		return n, fmt.Errorf("Response didn't contain a Location header")
@@ -136,40 +222,38 @@ func (n navigator) Location(resp *http.Response) (navigator, error) {
 	if err != nil {
 		return n, err
 	}
-	return navigator{
-		HttpClient: n.HttpClient,
-		path:       []relation{},
-		rootUri:    lurl,
+	return Nav{
+		HttpClient:    n.HttpClient,
+		sessionHeader: n.cloneHeader(),
+		path:          []Operation{},
+		rootUri:       lurl,
 	}, nil
+}
+
+func mergeHeaders(req *http.Request, headers ...http.Header) {
+	for _, header := range headers {
+		for k, vs := range header {
+			for _, v := range vs {
+				req.Header.Add(k, v)
+			}
+		}
+	}
 }
 
 // url returns the URL of the tip of the follow queue. Will follow the
 // usual pattern of requests.
-func (n navigator) url() (string, error) {
+func (n Nav) Url() (string, error) {
+	var err error
 	url := n.rootUri
 
 	for _, link := range n.path {
-		links, err := n.getLinks(url)
+		url, err = link.Fetch(n, url)
 		if err != nil {
-			return "", fmt.Errorf("Error getting links (%s, %v): %v", url, links, err)
+			return "", err
 		}
-
-		if _, ok := links.Items[link.rel]; !ok {
-			return "", LinkNotFoundError{link.rel, links.Items}
-		}
-
-		url, err = links.HrefParams(link.rel, link.params)
-		if err != nil {
-			return "", fmt.Errorf("Error getting url (%v, %v): %v", link.rel, link.params, err)
-		}
-
-		if url == "" {
-			return "", InvalidUrlError{url}
-		}
-
 		url, err = makeAbsoluteIfNecessary(url, n.rootUri)
 		if err != nil {
-			return "", fmt.Errorf("Error making url absolute: %v", err)
+			return "", fmt.Errorf("Error making url %s absolute: %v", url, err)
 		}
 	}
 
@@ -203,14 +287,14 @@ func makeAbsoluteIfNecessary(current, root string) (string, error) {
 
 // Get performs a GET request on the tip of the follow queue.
 //
-// When a navigator is evaluated it will first request the root, then
+// When a Nav is evaluated it will first request the root, then
 // request each relation on the queue until it reaches the tip. Once the
 // tip is reached it will defer to the calling method. In the case of GET
 // the last request will just be returned. For Post it will issue a post
 // to the URL of the last relation. Any error along the way will terminate
 // the walk and return immediately.
-func (n navigator) Get() (*http.Response, error) {
-	url, err := n.url()
+func (n Nav) Get(headers ...http.Header) (*http.Response, error) {
+	url, err := n.Url()
 	if err != nil {
 		return nil, err
 	}
@@ -225,14 +309,16 @@ func (n navigator) Get() (*http.Response, error) {
 			req.Header.Add(k, v)
 		}
 	}
-	fmt.Println(req)
+
+	headers = append([]http.Header{n.sessionHeader}, headers...)
+	mergeHeaders(req, headers...)
 
 	return n.HttpClient.Do(req)
 }
 
 // Options performs an OPTIONS request on the tip of the follow queue.
-func (n navigator) Options() (*http.Response, error) {
-	url, err := n.url()
+func (n Nav) Options(headers ...http.Header) (*http.Response, error) {
+	url, err := n.Url()
 	if err != nil {
 		return nil, err
 	}
@@ -242,6 +328,9 @@ func (n navigator) Options() (*http.Response, error) {
 		return nil, err
 	}
 
+	headers = append([]http.Header{n.sessionHeader}, headers...)
+	mergeHeaders(req, headers...)
+
 	return n.HttpClient.Do(req)
 }
 
@@ -249,8 +338,8 @@ func (n navigator) Options() (*http.Response, error) {
 // the given form data.
 //
 // See GET for a note on how the navigator executes requests.
-func (n navigator) PostForm(data url.Values) (*http.Response, error) {
-	url, err := n.url()
+func (n Nav) PostForm(data url.Values, headers ...http.Header) (*http.Response, error) {
+	url, err := n.Url()
 	if err != nil {
 		return nil, err
 	}
@@ -262,6 +351,9 @@ func (n navigator) PostForm(data url.Values) (*http.Response, error) {
 
 	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
 
+	headers = append([]http.Header{n.sessionHeader}, headers...)
+	mergeHeaders(req, headers...)
+
 	return n.HttpClient.Do(req)
 }
 
@@ -269,8 +361,8 @@ func (n navigator) PostForm(data url.Values) (*http.Response, error) {
 // given bodyType and body content.
 //
 // See GET for a note on how the navigator executes requests.
-func (n navigator) Patch(bodyType string, body io.Reader) (*http.Response, error) {
-	url, err := n.url()
+func (n Nav) Patch(bodyType string, body io.Reader, headers ...http.Header) (*http.Response, error) {
+	url, err := n.Url()
 	if err != nil {
 		return nil, err
 	}
@@ -282,6 +374,32 @@ func (n navigator) Patch(bodyType string, body io.Reader) (*http.Response, error
 
 	req.Header.Add("Content-Type", bodyType)
 
+	headers = append([]http.Header{n.sessionHeader}, headers...)
+	mergeHeaders(req, headers...)
+
+	return n.HttpClient.Do(req)
+}
+
+// Put parforms a PUT request on the tip of the follow queue with the
+// given bodyType and body content.
+//
+// See GET for a note on how the navigator executes requests.
+func (n Nav) Put(bodyType string, body io.Reader, headers ...http.Header) (*http.Response, error) {
+	url, err := n.Url()
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := newHalRequest("PUT", url, body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", bodyType)
+
+	headers = append([]http.Header{n.sessionHeader}, headers...)
+	mergeHeaders(req, headers...)
+
 	return n.HttpClient.Do(req)
 }
 
@@ -289,8 +407,8 @@ func (n navigator) Patch(bodyType string, body io.Reader) (*http.Response, error
 // given bodyType and body content.
 //
 // See GET for a note on how the navigator executes requests.
-func (n navigator) Post(bodyType string, body io.Reader) (*http.Response, error) {
-	url, err := n.url()
+func (n Nav) Post(bodyType string, body io.Reader, headers ...http.Header) (*http.Response, error) {
+	url, err := n.Url()
 	if err != nil {
 		return nil, err
 	}
@@ -302,14 +420,17 @@ func (n navigator) Post(bodyType string, body io.Reader) (*http.Response, error)
 
 	req.Header.Add("Content-Type", bodyType)
 
+	headers = append([]http.Header{n.sessionHeader}, headers...)
+	mergeHeaders(req, headers...)
+
 	return n.HttpClient.Do(req)
 }
 
 // Delete performs a DELETE request on the tip of the follow queue.
 //
 // See GET for a note on how the navigator executes requests.
-func (n navigator) Delete() (*http.Response, error) {
-	url, err := n.url()
+func (n Nav) Delete(headers ...http.Header) (*http.Response, error) {
+	url, err := n.Url()
 	if err != nil {
 		return nil, err
 	}
@@ -319,12 +440,15 @@ func (n navigator) Delete() (*http.Response, error) {
 		return nil, err
 	}
 
+	headers = append([]http.Header{n.sessionHeader}, headers...)
+	mergeHeaders(req, headers...)
+
 	return n.HttpClient.Do(req)
 }
 
 // Unmarshal is a shorthand for Get followed by json.Unmarshal. Handles
 // closing the response body and unmarshalling the body.
-func (n navigator) Unmarshal(v interface{}) error {
+func (n Nav) Unmarshal(v interface{}) error {
 	res, err := n.Get()
 	if err != nil {
 		return err
@@ -341,7 +465,7 @@ func (n navigator) Unmarshal(v interface{}) error {
 
 // Addheaders allows optional headers to be applied to the navigator
 // these headers will be applied to the http request before it is executed
-func (n navigator) AddHeaders(h map[string]string) navigator {
+func (n Nav) AddHeaders(h map[string]string) Nav {
 	n.httpheaders = h
 	return n
 }
@@ -359,11 +483,13 @@ func newHalRequest(method, url string, body io.Reader) (*http.Request, error) {
 
 // getLinks does a GET on a particular URL and try to deserialise it into
 // a HAL links collection.
-func (n navigator) getLinks(uri string) (Links, error) {
+func (n Nav) getLinks(uri string, requestHeader http.Header) (Links, error) {
 	req, err := newHalRequest("GET", uri, nil)
 	if err != nil {
 		return Links{}, err
 	}
+
+	mergeHeaders(req, n.sessionHeader, requestHeader)
 
 	res, err := n.HttpClient.Do(req)
 	if err != nil {
@@ -383,4 +509,45 @@ func (n navigator) getLinks(uri string) (Links, error) {
 	}
 
 	return m, nil
+}
+
+// getEmbedded does a GET on a particular URL and try to deserialise it into
+// a HAL representation and returns the uri for a particular embedded resource
+func (n Nav) getEmbedded(uri string, rel string, requestHeader http.Header) (string, error) {
+	req, err := newHalRequest("GET", uri, nil)
+	if err != nil {
+		return "", err
+	}
+
+	mergeHeaders(req, n.sessionHeader, requestHeader)
+
+	res, err := n.HttpClient.Do(req)
+	if err != nil {
+		return "", fmt.Errorf("Error requesting embedded resources: %v", err)
+	}
+	defer res.Body.Close()
+
+	body, err := ioutil.ReadAll(res.Body)
+	if err != nil {
+		return "", fmt.Errorf("Error reading request body: %v", err)
+	}
+
+	var m Embeds
+
+	if err := json.Unmarshal(body, &m); err != nil {
+		return "", fmt.Errorf("Unable to unmarshal '%s': %v", string(body), err)
+	}
+
+	link, ok := m.Resources[rel]
+	if !ok {
+		return "", fmt.Errorf("Request body '%s' doesn't contain embedded resource %s",
+			string(body), rel)
+	}
+
+	self, err := link.Href("self")
+	if err != nil {
+		return "", fmt.Errorf("Error extracting self href: %v", err)
+	}
+
+	return self, nil
 }

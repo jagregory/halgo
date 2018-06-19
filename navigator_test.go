@@ -2,11 +2,12 @@ package halgo
 
 import (
 	"fmt"
-	"github.com/gorilla/mux"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
+
+	"github.com/gorilla/mux"
 )
 
 func createTestHttpServer() (*httptest.Server, map[string]int) {
@@ -55,13 +56,14 @@ func TestNavigatingToUnknownLink(t *testing.T) {
 		t.Fatal("Expected error to be raised for missing link")
 	}
 
+	// I use HasPrefix because the order of the available relations isn't deterministic
+	if !strings.HasPrefix(err.Error(), "Response didn't contain 'missing' link relation:") {
+		t.Errorf("Unexpected error message: %s", err.Error())
+	}
+
 	_, err = Navigator(ts.URL).Follow("missing").Options()
 	if err == nil {
 		t.Fatal("Expected error to be raised for OPTIONS call to missing link")
-	}
-
-	if !strings.HasPrefix(err.Error(), "Response didn't contain 'missing' link relation:") {
-		t.Errorf("Unexpected error message: %s", err.Error())
 	}
 
 	if _, ok := err.(LinkNotFoundError); !ok {
@@ -129,7 +131,7 @@ func TestGettingTheRootViaChild(t *testing.T) {
 	nav := Navigator(ts.URL)
 
 	child := nav.Follow("child")
-	curl, err := child.url()
+	curl, err := child.Url()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -138,7 +140,7 @@ func TestGettingTheRootViaChild(t *testing.T) {
 	}
 
 	root := child.Follow("parent")
-	_, err = root.url()
+	_, err = root.Url()
 	if err != nil {
 		t.Fatal(err)
 	}
